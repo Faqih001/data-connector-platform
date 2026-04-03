@@ -1,4 +1,8 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
+
+class User(AbstractUser):
+    pass
 
 class DatabaseConnection(models.Model):
     DB_TYPES = [
@@ -18,4 +22,12 @@ class DatabaseConnection(models.Model):
 
     def __str__(self):
         return self.name
+
+class StoredFile(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    filepath = models.CharField(max_length=255)
+    shared_with = models.ManyToManyField(User, related_name='shared_files')
+
+    def __str__(self):
+        return self.filepath
 
