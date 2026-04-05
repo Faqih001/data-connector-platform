@@ -8,6 +8,6 @@ drf-yasg
 gunicorn
 whitenoise
 dj-database-url
-psycopg2
 django
 python-dotenv
+cryptography
