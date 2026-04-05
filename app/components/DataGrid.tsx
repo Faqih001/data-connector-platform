@@ -1,30 +1,112 @@
 'use client';
 
-import React from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-alpine.css";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  ColumnDef,
+} from '@tanstack/react-table';
+import { useState, useEffect } from 'react';
 
-const DataGrid = ({ rowData, columnDefs }) => {
-    const onGridReady = (params) => {
-        params.api.sizeColumnsToFit();
-    };
+interface EditableCellProps {
+  getValue: () => any;
+  row: any;
+  column: any;
+  table: any;
+}
 
-    const onCellValueChanged = (params) => {
-        console.log("Cell value changed:", params);
-        // Here you would handle the update, e.g., by sending it to the backend
-    };
+const EditableCell = ({
+  getValue,
+  row: { index },
+  column: { id },
+  table,
+}: EditableCellProps) => {
+  const initialValue = getValue();
+  const [value, setValue] = useState(initialValue);
 
-    return (
-        <div className="ag-theme-alpine" style={{ height: 400, width: 600 }}>
-            <AgGridReact
-                rowData={rowData}
-                columnDefs={columnDefs}
-                onGridReady={onGridReady}
-                onCellValueChanged={onCellValueChanged}>
-            </AgGridReact>
-        </div>
-    );
+  const onBlur = () => {
+    table.options.meta?.updateData(index, id, value);
+  };
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  return (
+    <input
+      value={value as string}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={onBlur}
+      className="w-full bg-transparent"
+    />
+  );
 };
 
-export default DataGrid;
+interface DataGridProps<TData> {
+  data: TData[];
+  columns: ColumnDef<TData>[];
+  setData: React.Dispatch<React.SetStateAction<TData[]>>;
+}
+
+export function DataGrid<TData>({ data, columns, setData }: DataGridProps<TData>) {
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    meta: {
+      updateData: (rowIndex: number, columnId: string, value: any) => {
+        setData((old) =>
+          old.map((row, index) => {
+            if (index === rowIndex) {
+              return {
+                ...old[rowIndex],
+                [columnId]: value,
+              };
+            }
+            return row;
+          })
+        );
+      },
+    },
+    defaultColumn: {
+      cell: EditableCell,
+    },
+  });
+
+  return (
+    <div className="p-2">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th
+                  key={header.id}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id}>
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id} className="px-6 py-4 whitespace-nowrap">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
