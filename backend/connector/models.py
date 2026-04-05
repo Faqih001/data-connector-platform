@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from .crypto import encrypt_password, decrypt_password
 
 
 class DatabaseConnection(models.Model):
@@ -19,8 +20,17 @@ class DatabaseConnection(models.Model):
     database_name = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        self.password = encrypt_password(self.password)
+        super().save(*args, **kwargs)
+
+    @property
+    def decrypted_password(self):
+        return decrypt_password(self.password)
+
     def __str__(self):
         return self.name
+
 
 class StoredFile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
