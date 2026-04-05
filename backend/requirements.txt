@@ -1,0 +1,13 @@
+psycopg2-binary
+mysql-connector-python
+pymongo
+clickhouse-driver
+djangorestframework
+django-cors-headers
+drf-yasg
+gunicorn
+whitenoise
+dj-database-url
+psycopg2
+django
+python-dotenv

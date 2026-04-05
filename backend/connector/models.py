@@ -3,20 +3,21 @@ from django.contrib.auth.models import User
 
 
 class DatabaseConnection(models.Model):
-    DB_TYPES = [
-        ('postgres', 'PostgreSQL'),
+    DB_TYPE_CHOICES = [
+        ('postgresql', 'PostgreSQL'),
         ('mysql', 'MySQL'),
-        ('mongo', 'MongoDB'),
+        ('mongodb', 'MongoDB'),
         ('clickhouse', 'ClickHouse'),
     ]
 
     name = models.CharField(max_length=255)
-    db_type = models.CharField(max_length=20, choices=DB_TYPES)
+    db_type = models.CharField(max_length=50, choices=DB_TYPE_CHOICES)
     host = models.CharField(max_length=255)
     port = models.IntegerField()
     username = models.CharField(max_length=255)
-    password = models.CharField(max_length=255)
-    database = models.CharField(max_length=255)
+    password = models.CharField(max_length=255)  # In a real app, use encrypted fields
+    database_name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name

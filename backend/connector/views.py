@@ -1,47 +1,56 @@
-from rest_framework import viewsets
-from .models import DatabaseConnection
-from .serializers import DatabaseConnectionSerializer
-from rest_framework.views import APIView
+from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .utils import get_connection, extract_data
-from rest_framework.decorators import api_view
+from rest_framework.decorators import action
+from .models import DatabaseConnection, StoredFile
+from .serializers import DatabaseConnectionSerializer, StoredFileSerializer
+from .services import extract_data_in_batches
+import json
+import os
+from django.conf import settings
+from datetime import datetime
 
 class DatabaseConnectionViewSet(viewsets.ModelViewSet):
     queryset = DatabaseConnection.objects.all()
     serializer_class = DatabaseConnectionSerializer
 
-class ExtractDataView(APIView):
-    def post(self, request, *args, **kwargs):
-        connection_id = request.data.get('connection_id')
+    @action(detail=True, methods=['post'])
+    def extract_data(self, request, pk=None):
+        connection = self.get_object()
         table_name = request.data.get('table_name')
-        batch_size = request.data.get('batch_size', 1000)
+        if not table_name:
+            return Response({"error": "table_name is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            db_connection = DatabaseConnection.objects.get(id=connection_id)
-            connection = get_connection(db_connection)
-            data_generator = extract_data(connection, table_name, batch_size)
+            # In a real app, this would be a background task
+            for batch in extract_data_in_batches(connection, table_name):
+                # For simplicity, we'll just store the first batch as a file
+                # and return it. A real implementation would handle all batches.
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                filename = f"extraction_{connection.name}_{table_name}_{timestamp}.json"
+                filepath = os.path.join(settings.MEDIA_ROOT, filename)
+                
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
-            # For simplicity, we'll just return the first batch
-            first_batch = next(data_generator)
-            return Response(first_batch)
+                with open(filepath, 'w') as f:
+                    json.dump(batch, f, default=str)
 
-        except DatabaseConnection.DoesNotExist:
-            return Response({'error': 'Database connection not found'}, status=404)
+                StoredFile.objects.create(
+                    user=request.user,
+                    filepath=filepath
+                )
+                return Response(batch, status=status.HTTP_200_OK)
+            
+            return Response({"message": "Extraction complete, but no data found."}, status=status.HTTP_200_OK)
+
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-from .storage import store_data
+class StoredFileViewSet(viewsets.ModelViewSet):
+    serializer_class = StoredFileSerializer
 
-@api_view(['POST'])
-def submit_data(request):
-    data = request.data.get('data')
-    source_metadata = request.data.get('source_metadata')
-    
-    # Basic validation
-    if not data or not isinstance(data, list):
-        return Response({'error': 'Invalid data format'}, status=400)
-
-    filepath = store_data(data, source_metadata)
-    
-    return Response({'status': 'success', 'filepath': filepath})
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff: # Admin
+            return StoredFile.objects.all()
+        return StoredFile.objects.filter(user=user) | StoredFile.objects.filter(shared_with=user).distinct()
 
