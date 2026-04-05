@@ -1,12 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import DatabaseConnectionViewSet, ExtractDataView, submit_data
+from .views import DatabaseConnectionViewSet, StoredFileViewSet
 
 router = DefaultRouter()
 router.register(r'connections', DatabaseConnectionViewSet)
+router.register(r'files', StoredFileViewSet, basename='storedfile')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('extract/', ExtractDataView.as_view(), name='extract_data'),
-    path('submit/', submit_data, name='submit_data'),
 ]
