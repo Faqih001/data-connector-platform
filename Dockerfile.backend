@@ -16,9 +16,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY backend/ .
+COPY wait-for-it.sh .
+RUN chmod +x wait-for-it.sh
 
 # Expose port
 EXPOSE 8000
 
 # Run the app
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["./wait-for-it.sh", "db", "--", "python", "manage.py", "runserver", "0.0.0.0:8000"]
