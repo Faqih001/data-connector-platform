@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Data Connector Platform
 
-## Getting Started
+This is a full-stack web application that allows users to connect to multiple databases, extract data in batches, edit the data in a grid, and send it to a backend for processing and storage.
 
-First, run the development server:
+## Architecture Overview
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+The application is a monorepo with a Next.js frontend and a Django REST Framework backend. The entire application is containerized using Docker and Docker Compose.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+-   **Frontend**: A Next.js application responsible for the user interface, including the data grid for editing data.
+-   **Backend**: A Django REST Framework application that provides a RESTful API for managing database connections, extracting data, and processing submitted data.
+-   **Databases**:
+    -   A PostgreSQL database serves as the primary database for the Django application.
+    -   The application can connect to multiple external databases (PostgreSQL, MySQL, MongoDB, ClickHouse) for data extraction.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack Decisions
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+-   **Frontend**: Next.js was chosen for its server-side rendering capabilities, which can improve performance and SEO, and its rich ecosystem of libraries and tools.
+-   **Backend**: Django REST Framework was chosen for its rapid development capabilities, built-in admin interface, and robust ORM.
+-   **Containerization**: Docker and Docker Compose were chosen to ensure a consistent development and deployment environment, and to simplify the management of multiple services.
 
-## Learn More
+## Database Connector Design
 
-To learn more about Next.js, take a look at the following resources:
+The database connector is designed to be extensible, allowing for the easy addition of new database types. A `DatabaseConnection` model stores the connection details for each database. A `get_connection` utility function provides a simple interface for creating a connection to a database, and an `extract_data` function handles the batch extraction of data.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Setup Instructions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1.  **Clone the repository**:
+    ```bash
+    git clone <repository-url>
+    cd data-connector-platform
+    ```
+2.  **Set up environment variables**:
+    Create a `.env` file in the root of the project and add the following:
+    ```
+    DATABASE_URL=postgres://user:password@db:5432/dataconnector
+    ```
+3.  **Build and run the application**:
+    ```bash
+    docker-compose up --build
+    ```
+    The frontend will be available at `http://localhost:3000` and the backend at `http://localhost:8000`.
 
-## Deploy on Vercel
+## API Documentation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+-   `POST /api/connections/`: Create a new database connection.
+-   `GET /api/connections/`: Get a list of all database connections.
+-   `POST /api/extract/`: Extract data from a database.
+-   `POST /api/submit/`: Submit edited data to the backend.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
