@@ -45,3 +45,16 @@ export async function getFiles(): Promise<any[]> {
     }
     return response.json();
 }
+
+export async function submitData(fileId: number, data: any[]): Promise<void> {
+    const response = await fetch(`${API_URL}/files/${fileId}/submit_data/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data }),
+    });
+    if (!response.ok) {
+        throw new Error('Failed to submit data');
+    }
+}

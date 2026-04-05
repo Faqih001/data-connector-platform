@@ -54,3 +54,19 @@ class StoredFileViewSet(viewsets.ModelViewSet):
             return StoredFile.objects.all()
         return StoredFile.objects.filter(user=user) | StoredFile.objects.filter(shared_with=user).distinct()
 
+    @action(detail=True, methods=['post'])
+    def submit_data(self, request, pk=None):
+        file = self.get_object()
+        data = request.data.get('data')
+
+        if not data:
+            return Response({"error": "No data provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with open(file.filepath, 'w') as f:
+                json.dump(data, f, default=str)
+            
+            return Response({"message": "File updated successfully"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
