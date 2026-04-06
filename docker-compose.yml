@@ -23,7 +23,8 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - DATABASE_URL=postgres://user:password@db:5432/dataconnector
+      - DATABASE_URL=${DATABASE_URL}
+      - DJANGO_SETTINGS_MODULE=backend.settings
     depends_on:
       - db
     networks:
