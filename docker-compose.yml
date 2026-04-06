@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       - backend
     networks:
@@ -21,7 +21,7 @@ services:
       - ./backend:/app/backend
       - ./wait-for-it.sh:/app/wait-for-it.sh
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/dataconnector
     depends_on:
@@ -36,7 +36,7 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - app-network
 
@@ -55,15 +55,15 @@ services:
   mongo:
     image: mongo:4.4
     ports:
-      - "27017:27017"
+      - "27018:27017"
     networks:
       - app-network
 
   clickhouse:
     image: yandex/clickhouse-server
     ports:
-      - "8123:8123"
-      - "9000:9000"
+      - "8124:8123"
+      - "9001:9000"
     networks:
       - app-network
 
