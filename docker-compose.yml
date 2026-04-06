@@ -22,8 +22,9 @@ services:
       - ./wait-for-it.sh:/app/wait-for-it.sh
     ports:
       - "8001:8000"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=${DATABASE_URL}
       - DJANGO_SETTINGS_MODULE=backend.settings
     depends_on:
       - db
