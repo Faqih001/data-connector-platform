@@ -1,3 +1,10 @@
+export interface User {
+    id: number;
+    username: string;
+    email?: string;
+    is_staff?: boolean;
+}
+
 export interface DatabaseConnection {
     id: number;
     name: string;
@@ -8,14 +15,15 @@ export interface DatabaseConnection {
     password?: string;
     database_name: string;
     created_at: string;
-  }
+}
 
 export interface StoredFile {
     id: number;
     filepath: string;
     format_type?: string; // 'json' or 'csv'
-    user?: number | null;
-    shared_with?: number[];
+    user?: User | null;
+    shared_with?: User[];
     created_at?: string;
-  }
+    updated_at?: string;
+}
   

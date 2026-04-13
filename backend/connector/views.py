@@ -1,13 +1,17 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
+from rest_framework.permissions import IsAuthenticated
 from .models import DatabaseConnection, StoredFile, ExtractedData
 from .serializers import DatabaseConnectionSerializer, StoredFileSerializer, ExtractedDataSerializer
 from .services import extract_data_in_batches, json_to_csv
+from .permissions import IsFileOwnerOrAdmin, IsFileOwnerOrAdminForWrite
 import json
 import os
 from django.conf import settings
 from datetime import datetime
+from django.shortcuts import render
+from django.contrib.auth.models import User
 
 class DatabaseConnectionViewSet(viewsets.ModelViewSet):
     queryset = DatabaseConnection.objects.all()
@@ -74,22 +78,35 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
 
 class StoredFileViewSet(viewsets.ModelViewSet):
     serializer_class = StoredFileSerializer
+    permission_classes = [IsAuthenticated, IsFileOwnerOrAdmin]
 
     def get_queryset(self):
         user = self.request.user
         # For unauthenticated users or development, return all files
         if not user.is_authenticated:
             return StoredFile.objects.all()
-        if hasattr(user, 'role') and user.role == 'admin':
+        # Admin users see all files
+        if user.is_staff or (hasattr(user, 'role') and user.role == 'admin'):
             return StoredFile.objects.all()
-        if user.is_staff: # fallback for default admin user
-            return StoredFile.objects.all()
+        # Regular users see their own files + shared files
         return StoredFile.objects.filter(user=user) | StoredFile.objects.filter(shared_with=user).distinct()
 
     @action(detail=True, methods=['post'])
     def submit_data(self, request, pk=None):
         """Submit modified data with DRF validation and model updates"""
         file = self.get_object()
+        self.check_object_permissions(request, file)
+        
+        # Only owner or admin can modify
+        is_owner = file.user == request.user
+        is_admin = request.user.is_staff or (hasattr(request.user, 'role') and request.user.role == 'admin')
+        
+        if not (is_owner or is_admin):
+            return Response(
+                {"error": "❌ Permission denied. You can only modify files you own."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         data = request.data.get('data')
 
         if not data:
@@ -127,7 +144,7 @@ class StoredFileViewSet(viewsets.ModelViewSet):
             
             # ✅ Return validated data and success
             return Response({
-                "message": "Data updated successfully",
+                "message": "✅ Data updated successfully",
                 "extracted_data": validated_data,
                 "updated_at": extracted_data.updated_at
             }, status=status.HTTP_200_OK)
@@ -163,6 +180,123 @@ class StoredFileViewSet(viewsets.ModelViewSet):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['post'])
+    def share(self, request, pk=None):
+        """Share file with other users"""
+        file = self.get_object()
+        
+        # Only owner or admin can share
+        is_owner = file.user == request.user
+        is_admin = request.user.is_staff or (hasattr(request.user, 'role') and request.user.role == 'admin')
+        
+        if not (is_owner or is_admin):
+            return Response(
+                {"error": "❌ Permission denied. Only the file owner can share this file."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user_ids = request.data.get('user_ids', [])
+        if not user_ids:
+            return Response(
+                {"error": "user_ids list is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            users = User.objects.filter(id__in=user_ids)
+            if users.count() != len(user_ids):
+                return Response(
+                    {"error": "Some users not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            file.shared_with.add(*users)
+            shared_users = [{"id": u.id, "username": u.username} for u in users]
+            
+            return Response({
+                "message": "✅ File shared successfully",
+                "shared_with": shared_users,
+                "file_id": file.id
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'])
+    def unshare(self, request, pk=None):
+        """Revoke file sharing with specific users"""
+        file = self.get_object()
+        
+        # Only owner or admin can unshare
+        is_owner = file.user == request.user
+        is_admin = request.user.is_staff or (hasattr(request.user, 'role') and request.user.role == 'admin')
+        
+        if not (is_owner or is_admin):
+            return Response(
+                {"error": "❌ Permission denied. Only the file owner can modify sharing."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user_ids = request.data.get('user_ids', [])
+        if not user_ids:
+            return Response(
+                {"error": "user_ids list is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            users = User.objects.filter(id__in=user_ids)
+            file.shared_with.remove(*users)
+            
+            return Response({
+                "message": "✅ File sharing revoked",
+                "file_id": file.id,
+                "revoked_count": users.count()
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'])
+    def permissions(self, request, pk=None):
+        """Get current access information for a file"""
+        file = self.get_object()
+        
+        # Check if user has access
+        is_owner = file.user == request.user
+        is_admin = request.user.is_staff or (hasattr(request.user, 'role') and request.user.role == 'admin')
+        is_shared = file.shared_with.filter(id=request.user.id).exists()
+        
+        if not (is_owner or is_admin or is_shared):
+            return Response(
+                {"error": "❌ Access denied"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        shared_users = [
+            {"id": u.id, "username": u.username} 
+            for u in file.shared_with.all()
+        ]
+        
+        return Response({
+            "file_id": file.id,
+            "owner": {
+                "id": file.user.id,
+                "username": file.user.username
+            } if file.user else None,
+            "is_owner": is_owner,
+            "is_admin": is_admin,
+            "is_shared_with_me": is_shared,
+            "shared_with": shared_users,
+            "can_modify": is_owner or is_admin,
+            "can_share": is_owner or is_admin,
+            "access_level": "admin" if is_admin else ("owner" if is_owner else ("shared" if is_shared else "none"))
+        }, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -228,3 +362,13 @@ def extract_data_endpoint(request):
         return Response({"error": "Connection not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def welcome(request):
+    """Welcome page with admin credentials"""
+    admin_user = User.objects.filter(is_superuser=True).first()
+    context = {
+        'admin_username': admin_user.username if admin_user else 'admin',
+        'admin_password': 'admin123',
+    }
+    return render(request, 'welcome.html', context)

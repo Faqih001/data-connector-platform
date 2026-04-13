@@ -18,8 +18,10 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from connector.views import welcome
 
 urlpatterns = [
+    path('', welcome, name='welcome'),
     path('admin/', admin.site.urls),
     path('api/', include('connector.urls')),
 ]

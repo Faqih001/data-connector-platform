@@ -1,6 +1,6 @@
 import { DatabaseConnection } from '@/app/types';
 
-const API_URL = 'http://localhost:8001/api';
+export const API_URL = 'http://localhost:8001/api';
 
 export async function getConnections(): Promise<DatabaseConnection[]> {
   const response = await fetch(`${API_URL}/connections/`);

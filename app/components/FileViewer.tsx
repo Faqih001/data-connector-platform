@@ -1,16 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { StoredFile } from '@/app/types';
+import { StoredFile, User } from '@/app/types';
+import { API_URL } from '@/app/lib/api';
 
 interface FileViewerProps {
   files: StoredFile[];
   onFileSelect?: (file: StoredFile | null) => void;
+  currentUser?: User;
 }
 
 interface DeletedFile {
   file: StoredFile;
-  deletedAt: number; // timestamp
+  deletedAt: number;
+}
+
+interface FileAccess {
+  is_owner: boolean;
+  is_admin: boolean;
+  is_shared_with_me: boolean;
+  can_modify: boolean;
+  can_share: boolean;
+  access_level: string;
 }
 
 function jsonToCsv(jsonData: any[]): string {
@@ -31,16 +42,24 @@ function jsonToCsv(jsonData: any[]): string {
   return [csvHeaders, ...csvRows].join('\n');
 }
 
-export function FileViewer({ files, onFileSelect }: FileViewerProps) {
+export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps) {
   const [expandedFileId, setExpandedFileId] = useState<number | null>(null);
   const [downloadFormat, setDownloadFormat] = useState<'json' | 'csv'>('json');
   const [selectedFiles, setSelectedFiles] = useState<Set<number>>(new Set());
   const [deletedFiles, setDeletedFiles] = useState<DeletedFile[]>([]);
   const [visibleFiles, setVisibleFiles] = useState<StoredFile[]>(files);
+  const [fileAccess, setFileAccess] = useState<Record<number, FileAccess>>({});
+  const [shareModal, setShareModal] = useState<{ open: boolean; fileId: number | null }>({ open: false, fileId: null });
+  const [shareEmail, setShareEmail] = useState('');
+  const [loadingShare, setLoadingShare] = useState(false);
 
   // Update visible files when input files change
   useEffect(() => {
     setVisibleFiles(files);
+    // Fetch access levels for all files
+    files.forEach(file => {
+      fetchFileAccess(file.id);
+    });
   }, [files]);
 
   // Clean up expired deleted files (5 minute window)
@@ -54,11 +73,45 @@ export function FileViewer({ files, onFileSelect }: FileViewerProps) {
     return () => clearInterval(interval);
   }, []);
 
+  const fetchFileAccess = async (fileId: number) => {
+    try {
+      const response = await fetch(`${API_URL}/files/${fileId}/permissions/`);
+      if (response.ok) {
+        const data = await response.json();
+        setFileAccess(prev => ({
+          ...prev,
+          [fileId]: data
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch file access:', error);
+    }
+  };
+
   const getFileNameFromPath = (filepath: string) => {
     return filepath.split('/').pop() || 'file';
   };
 
+  const getAccessBadge = (file: StoredFile) => {
+    const access = fileAccess[file.id];
+    if (!access) return null;
+
+    if (access.is_admin) {
+      return <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">👑 Admin</span>;
+    } else if (access.is_owner) {
+      return <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">🔒 Owner</span>;
+    } else if (access.is_shared_with_me) {
+      return <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">📤 Shared</span>;
+    }
+    return null;
+  };
+
   const handleSelectFile = (fileId: number) => {
+    const access = fileAccess[fileId];
+    if (access && !access.can_modify) {
+      return; // Don't allow selection if can't modify
+    }
+
     const newSelected = new Set(selectedFiles);
     if (newSelected.has(fileId)) {
       newSelected.delete(fileId);
@@ -69,10 +122,15 @@ export function FileViewer({ files, onFileSelect }: FileViewerProps) {
   };
 
   const handleSelectAll = () => {
-    if (selectedFiles.size === visibleFiles.length) {
+    const modifiableFiles = visibleFiles.filter(f => {
+      const access = fileAccess[f.id];
+      return access?.can_modify;
+    });
+
+    if (selectedFiles.size === modifiableFiles.length) {
       setSelectedFiles(new Set());
     } else {
-      setSelectedFiles(new Set(visibleFiles.map(f => f.id)));
+      setSelectedFiles(new Set(modifiableFiles.map(f => f.id)));
     }
   };
 
@@ -107,6 +165,39 @@ export function FileViewer({ files, onFileSelect }: FileViewerProps) {
     setDeletedFiles(prev => 
       prev.filter(item => item.file.id !== deletedFile.file.id)
     );
+  };
+
+  const handleShareClick = (fileId: number) => {
+    setShareModal({ open: true, fileId });
+    setShareEmail('');
+  };
+
+  const handleShare = async () => {
+    if (!shareModal.fileId || !shareEmail.trim()) return;
+
+    setLoadingShare(true);
+    try {
+      // In real implementation, search users by email and get their IDs
+      const response = await fetch(`${API_URL}/files/${shareModal.fileId}/share/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_ids: [1] }) // Placeholder - would search by email
+      });
+
+      if (response.ok) {
+        alert('✅ File shared successfully!');
+        setShareModal({ open: false, fileId: null });
+        if (shareModal.fileId) {
+          fetchFileAccess(shareModal.fileId);
+        }
+      } else {
+        alert('Failed to share file');
+      }
+    } catch (error) {
+      alert('Failed to share file: ' + error);
+    } finally {
+      setLoadingShare(false);
+    }
   };
 
   const getTimeRemaining = (deletedAt: number): string => {
@@ -194,38 +285,67 @@ export function FileViewer({ files, onFileSelect }: FileViewerProps) {
                   const fileName = getFileNameFromPath(file.filepath);
                   const isExpanded = expandedFileId === file.id;
                   const isSelected = selectedFiles.has(file.id);
+                  const access = fileAccess[file.id];
                   
                   return (
                     <li key={file.id} className={`border rounded p-3 ${isSelected ? 'bg-blue-50 border-blue-300' : ''}`}>
                       <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelectFile(file.id)}
-                          className="w-4 h-4 mt-1"
-                        />
+                        {access?.can_modify && (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleSelectFile(file.id)}
+                            className="w-4 h-4 mt-1"
+                          />
+                        )}
                         <div className="flex-1">
-                          <button
-                            onClick={() => {
-                              setExpandedFileId(isExpanded ? null : file.id);
-                              if (onFileSelect) onFileSelect(isExpanded ? null : file);
-                            }}
-                            className="text-left text-sm font-medium hover:underline"
-                          >
-                            {fileName}
-                          </button>
+                          <div className="flex items-center gap-2 mb-1">
+                            <button
+                              onClick={() => {
+                                setExpandedFileId(isExpanded ? null : file.id);
+                                if (onFileSelect) onFileSelect(isExpanded ? null : file);
+                              }}
+                              className="text-left text-sm font-medium hover:underline"
+                            >
+                              {fileName}
+                            </button>
+                            {getAccessBadge(file)}
+                          </div>
+                          {file.user && (
+                            <p className="text-xs text-gray-500">👤 {file.user.username || 'Unknown'}</p>
+                          )}
+                          {file.shared_with && file.shared_with.length > 0 && (
+                            <p className="text-xs text-green-600">📤 Shared with {file.shared_with.length}</p>
+                          )}
                           <div className="text-xs text-gray-500 mt-1">
                             Format: <span className="font-medium uppercase">{file.format_type || 'json'}</span>
                           </div>
                         </div>
+                        <div className="flex gap-1">
+                          {access?.can_share && (
+                            <button
+                              onClick={() => handleShareClick(file.id)}
+                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                              title="Share file"
+                            >
+                              📤
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t space-y-2 ml-7">
+                          {access && (
+                            <div className="text-xs text-gray-600 mb-2 p-2 bg-gray-50 rounded">
+                              <p><strong>Access:</strong> {access.access_level.toUpperCase()} | Modify: {access.can_modify ? '✅' : '❌'} | Share: {access.can_share ? '✅' : '❌'}</p>
+                            </div>
+                          )}
                           <div className="flex gap-2 items-center">
                             <select
                               value={downloadFormat}
                               onChange={(e) => setDownloadFormat(e.target.value as 'json' | 'csv')}
                               className="px-2 py-1 border rounded text-sm"
+                              disabled={!access?.can_modify}
                             >
                               <option value="json">JSON</option>
                               <option value="csv">CSV</option>
@@ -274,6 +394,38 @@ export function FileViewer({ files, onFileSelect }: FileViewerProps) {
             </div>
           )}
         </>
+      )}
+
+      {shareModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
+            <h3 className="text-lg font-bold mb-4">📤 Share File</h3>
+            <input
+              type="email"
+              placeholder="Enter user email (coming soon)"
+              value={shareEmail}
+              onChange={(e) => setShareEmail(e.target.value)}
+              className="w-full border rounded p-2 mb-4"
+              disabled
+            />
+            <p className="text-xs text-gray-500 mb-4">Note: User search functionality will be implemented in the next update.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleShare}
+                disabled={loadingShare || !shareEmail.trim()}
+                className="flex-1 bg-blue-500 text-white rounded p-2 hover:bg-blue-600 disabled:opacity-50"
+              >
+                {loadingShare ? 'Sharing...' : 'Share'}
+              </button>
+              <button
+                onClick={() => setShareModal({ open: false, fileId: null })}
+                className="flex-1 bg-gray-300 text-gray-800 rounded p-2 hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

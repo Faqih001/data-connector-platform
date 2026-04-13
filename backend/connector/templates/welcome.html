@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Connector Platform - Backend API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 60px 40px;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .divider {
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 60px;
+            margin: 20px auto 40px;
+            border-radius: 2px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            color: #667eea;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 24px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .endpoint-list {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .endpoint {
+            margin-bottom: 15px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.95em;
+        }
+
+        .endpoint:last-child {
+            margin-bottom: 0;
+        }
+
+        .method {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        .method.get {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .method.post {
+            background: #2196F3;
+            color: white;
+        }
+
+        .url {
+            color: #333;
+            word-break: break-all;
+        }
+
+        .credentials-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .credentials-box h3 {
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        .credential-item {
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 3px solid #fff;
+        }
+
+        .credential-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .credential-value {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 1.1em;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            flex: 1;
+            min-width: 150px;
+            border: 2px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background: #e8e8e8;
+            border-color: #bbb;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            color: #1565c0;
+            line-height: 1.6;
+        }
+
+        .info-box strong {
+            color: #0d47a1;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Data Connector Platform</h1>
+        <p class="subtitle">Backend API Server</p>
+        <div class="divider"></div>
+
+        <div class="section">
+            <div class="section-title">API Endpoints</div>
+            <div class="endpoint-list">
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/connections/</span>
+                    <div style="margin-top: 5px; color: #666; font-size: 0.9em;">Create database connection</div>
+                </div>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/connections/</span>
+                    <div style="margin-top: 5px; color: #666; font-size: 0.9em;">List all connections</div>
+                </div>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/extract/</span>
+                    <div style="margin-top: 5px; color: #666; font-size: 0.9em;">Extract data from connection</div>
+                </div>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/submit/</span>
+                    <div style="margin-top: 5px; color: #666; font-size: 0.9em;">Submit extracted data</div>
+                </div>
+            </div>
+            <div class="info-box">
+                <strong>📌 Frontend:</strong> The main UI is running at <strong>http://localhost:3000</strong>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Admin Access</div>
+            <div class="credentials-box">
+                <h3>🔐 Admin Credentials</h3>
+                <div class="credential-item">
+                    <div class="credential-label">Username:</div>
+                    <div class="credential-value">{{ admin_username }}</div>
+                </div>
+                <div class="credential-item">
+                    <div class="credential-label">Password:</div>
+                    <div class="credential-value">{{ admin_password }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">What's Available in Admin?</div>
+            <div class="endpoint-list">
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ddd;">
+                        <strong>✅ Connections Management:</strong> View, create, and manage all database connections
+                    </li>
+                    <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ddd;">
+                        <strong>📁 Stored Files:</strong> Browse and manage extracted data files
+                    </li>
+                    <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ddd;">
+                        <strong>👥 User Management:</strong> Create and manage platform users
+                    </li>
+                    <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ddd;">
+                        <strong>⚙️ System Configuration:</strong> Configure database connectors and settings
+                    </li>
+                    <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ddd;">
+                        <strong>📊 Data Monitoring:</strong> Track extraction activities and file storage
+                    </li>
+                    <li>
+                        <strong>🔧 Connector Setup:</strong> Add PostgreSQL, MySQL, MongoDB, ClickHouse connections
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <a href="/api/connections/" class="btn btn-primary">🔗 API Connections</a>
+            <a href="/admin/" class="btn btn-primary">📊 Go to Admin Panel</a>
+            <a href="http://localhost:3000" class="btn btn-secondary">🎨 Open Frontend (Port 3000)</a>
+        </div>
+
+        <div class="info-box">
+            <strong>💡 Tip:</strong> The admin panel allows you to manage all connections, view stored files, and monitor system activity. Use the credentials above to log in.
+        </div>
+    </div>
+</body>
+</html>
