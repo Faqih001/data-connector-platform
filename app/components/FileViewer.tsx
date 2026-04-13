@@ -175,24 +175,63 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
   const handleShareClick = (fileId: number) => {
     setShareModal({ open: true, fileId });
     setShareEmail('');
+    setSearchResults([]);
+    setSelectedUsers(new Set());
+  };
+
+  const handleSearchUsers = async (query: string) => {
+    setShareEmail(query);
+    if (query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/search-users/?q=${encodeURIComponent(query)}`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      setSearchResults(data.results || []);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const toggleUserSelection = (userId: number) => {
+    const newSelected = new Set(selectedUsers);
+    if (newSelected.has(userId)) {
+      newSelected.delete(userId);
+    } else {
+      newSelected.add(userId);
+    }
+    setSelectedUsers(newSelected);
   };
 
   const handleShare = async () => {
-    if (!shareModal.fileId || !shareEmail.trim()) return;
+    if (!shareModal.fileId || selectedUsers.size === 0) {
+      alert('Please select at least one user to share with');
+      return;
+    }
 
     setLoadingShare(true);
     try {
-      // In real implementation, search users by email and get their IDs
       const response = await fetch(`${API_URL}/files/${shareModal.fileId}/share/`, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_ids: [1] }) // Placeholder - would search by email
+        body: JSON.stringify({ user_ids: Array.from(selectedUsers) })
       });
 
       if (response.ok) {
         alert('✅ File shared successfully!');
         setShareModal({ open: false, fileId: null });
+        setSearchResults([]);
+        setSelectedUsers(new Set());
+        setShareEmail('');
         if (shareModal.fileId) {
           fetchFileAccess(shareModal.fileId);
         }
@@ -406,27 +445,70 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
 
       {shareModal.open && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
+          <div className="bg-white rounded-lg p-6 w-96 shadow-lg max-h-96 overflow-y-auto">
             <h3 className="text-lg font-bold mb-4">📤 Share File</h3>
-            <input
-              type="email"
-              placeholder="Enter user email (coming soon)"
-              value={shareEmail}
-              onChange={(e) => setShareEmail(e.target.value)}
-              className="w-full border rounded p-2 mb-4"
-              disabled
-            />
-            <p className="text-xs text-gray-500 mb-4">Note: User search functionality will be implemented in the next update.</p>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-semibold mb-2">Search Users</label>
+              <input
+                type="text"
+                placeholder="Search by email or username..."
+                value={shareEmail}
+                onChange={(e) => handleSearchUsers(e.target.value)}
+                className="w-full border rounded p-2 mb-2"
+              />
+              
+              {searchLoading && (
+                <p className="text-sm text-gray-500">Searching...</p>
+              )}
+              
+              {shareEmail.length >= 2 && searchResults.length === 0 && !searchLoading && (
+                <p className="text-sm text-gray-500">No users found</p>
+              )}
+              
+              {searchResults.length > 0 && (
+                <div className="border rounded p-2 bg-gray-50 max-h-48 overflow-y-auto">
+                  {searchResults.map(user => (
+                    <label key={user.id} className="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.has(user.id)}
+                        onChange={() => toggleUserSelection(user.id)}
+                        className="mr-2"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold">{user.username}</div>
+                        <div className="text-xs text-gray-500">{user.email}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {selectedUsers.size > 0 && (
+              <div className="mb-4 p-2 bg-blue-50 rounded border border-blue-200">
+                <p className="text-sm font-semibold text-blue-900">
+                  Selected: {selectedUsers.size} user{selectedUsers.size !== 1 ? 's' : ''}
+                </p>
+              </div>
+            )}
+            
             <div className="flex gap-2">
               <button
                 onClick={handleShare}
-                disabled={loadingShare || !shareEmail.trim()}
+                disabled={loadingShare || selectedUsers.size === 0}
                 className="flex-1 bg-blue-500 text-white rounded p-2 hover:bg-blue-600 disabled:opacity-50"
               >
                 {loadingShare ? 'Sharing...' : 'Share'}
               </button>
               <button
-                onClick={() => setShareModal({ open: false, fileId: null })}
+                onClick={() => {
+                  setShareModal({ open: false, fileId: null });
+                  setSearchResults([]);
+                  setSelectedUsers(new Set());
+                  setShareEmail('');
+                }}
                 className="flex-1 bg-gray-300 text-gray-800 rounded p-2 hover:bg-gray-400"
               >
                 Cancel
