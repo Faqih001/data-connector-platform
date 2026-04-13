@@ -55,6 +55,9 @@ class StoredFileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        # For unauthenticated users or development, return all files
+        if not user.is_authenticated:
+            return StoredFile.objects.all()
         if hasattr(user, 'role') and user.role == 'admin':
             return StoredFile.objects.all()
         if user.is_staff: # fallback for default admin user
