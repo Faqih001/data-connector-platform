@@ -45,7 +45,7 @@ function checkPort(port) {
 }
 
 async function runBackend() {
-  const port = await findAvailablePort(8000, 8009);
+  const port = await findAvailablePort(8001, 8010);
   console.log(`\n✓ Starting Django backend on port ${port}...`);
   
   const backendDir = path.join(__dirname, 'backend');

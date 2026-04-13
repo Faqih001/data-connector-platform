@@ -1,11 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StoredFile } from '@/app/types';
 
 interface FileViewerProps {
   files: StoredFile[];
   onFileSelect?: (file: StoredFile | null) => void;
+}
+
+interface DeletedFile {
+  file: StoredFile;
+  deletedAt: number; // timestamp
 }
 
 function jsonToCsv(jsonData: any[]): string {

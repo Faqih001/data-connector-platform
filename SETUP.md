@@ -112,13 +112,13 @@ The `port-detector.js` utility automatically finds available ports:
 
 **Linux/macOS:**
 ```bash
-lsof -i :8000   # Check backend port
+lsof -i :8001   # Check backend port
 lsof -i :3000   # Check frontend port
 ```
 
 **Windows (PowerShell):**
 ```powershell
-Get-NetTCPConnection -LocalPort 8000
+Get-NetTCPConnection -LocalPort 8001
 Get-NetTCPConnection -LocalPort 3000
 ```
 
@@ -126,13 +126,13 @@ Get-NetTCPConnection -LocalPort 3000
 
 **Linux/macOS:**
 ```bash
-kill -9 $(lsof -t -i :8000)
+kill -9 $(lsof -t -i :8001)
 kill -9 $(lsof -t -i :3000)
 ```
 
 **Windows (PowerShell as Admin):**
 ```powershell
-Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess -Force
+Stop-Process -Id (Get-NetTCPConnection -LocalPort 8001).OwningProcess -Force
 Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess -Force
 ```
 
@@ -141,10 +141,10 @@ Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess -Force
 **Backend on specific port:**
 ```bash
 cd backend
-python manage.py runserver 0.0.0.0:8001
+python manage.py runserver 0.0.0.0:8002
 ```
 
-**Frontend on specific port:**
+**Frontend on custom port:**
 ```bash
 npm run dev -- -p 3001
 ```
@@ -168,7 +168,7 @@ docker-compose down
 
 Services available at:
 - Frontend: http://localhost:3000
-- Backend: http://localhost:8000
+- Backend: http://localhost:8001
 
 ---
 
@@ -176,7 +176,7 @@ Services available at:
 
 ### Backend Health Check
 ```bash
-curl http://localhost:8000/api/connections/
+curl http://localhost:8001/api/connections/
 # Should return: 200 OK (possibly with empty list)
 ```
 
@@ -236,10 +236,10 @@ python manage.py migrate
 
 **Solutions:**
 
-1. **Check backend is running** - Look at Terminal 1 output
-2. **Update API URL** in `app/lib/api.ts`:
+1. **Check backend is running** - Look at Terminal 1 output (default: port 8001)
+2. **Update API URL** in `app/lib/api.ts` if on different port:
    ```typescript
-   const API_BASE_URL = 'http://localhost:8001'; // If on different port
+   const API_BASE_URL = 'http://localhost:8002'; // If on different port
    ```
 3. **Check CORS settings** in `backend/backend/settings.py`:
    ```python
@@ -466,7 +466,7 @@ data-connector-platform/
 | Test API | `curl http://localhost:8000/api/connections/` |
 | Access app | `http://localhost:3000` |
 | Stop services | `Ctrl+C` |
-| Check port usage | `lsof -i :8000` (Linux/macOS) |
+| Check port usage | `lsof -i :8001` (Linux/macOS) |
 | Kill process | `kill -9 <PID>` (Linux/macOS) |
 
 ---

@@ -10,8 +10,8 @@ Quick summary:
 ```bash
 npm install && cd backend && pip install -r requirements.txt && cd ..
 cd backend && python manage.py migrate && cd ..
-npm run backend  # Terminal 1
-npm run frontend # Terminal 2
+npm run backend  # Terminal 1 - starts on port 8001
+npm run frontend # Terminal 2 - starts on port 3000
 # Open http://localhost:3000
 ```
 
@@ -66,7 +66,7 @@ See **[SETUP.md](SETUP.md)** for complete, step-by-step instructions.
     ```bash
     docker-compose up --build
     ```
-    The frontend will be available at `http://localhost:3000` and the backend at `http://localhost:8000`.
+    The frontend will be available at `http://localhost:3000` and the backend at `http://localhost:8001`.
 
 ## API Documentation
 
