@@ -5,8 +5,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataGrid } from "./components/DataGrid";
 import { ConnectionForm } from "./components/ConnectionForm";
 import { FileViewer } from "./components/FileViewer";
-import { getConnections, createConnection, extractData } from "./lib/api";
-import { DatabaseConnection } from "./types";
+import { getConnections, createConnection, extractData, getFiles, submitData } from "./lib/api";
+import { DatabaseConnection, StoredFile } from "./types";
 
 export default function Home() {
   const [connections, setConnections] = useState<DatabaseConnection[]>([]);
@@ -15,22 +15,28 @@ export default function Home() {
   >(null);
   const [tableName, setTableName] = useState("");
   const [data, setData] = useState<any[]>([]);
+  const [files, setFiles] = useState<StoredFile[]>([]);
+  const [selectedFile, setSelectedFile] = useState<StoredFile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadConnections() {
+    async function loadInitialData() {
       try {
         setIsLoading(true);
-        const fetchedConnections = await getConnections();
+        const [fetchedConnections, fetchedFiles] = await Promise.all([
+          getConnections(),
+          getFiles(),
+        ]);
         setConnections(fetchedConnections);
+        setFiles(fetchedFiles);
       } catch (err) {
-        setError("Failed to load connections.");
+        setError("Failed to load initial data.");
       } finally {
         setIsLoading(false);
       }
     }
-    loadConnections();
+    loadInitialData();
   }, []);
 
   const handleCreateConnection = async (
@@ -59,6 +65,23 @@ export default function Home() {
       setData(extractedData);
     } catch (err) {
       setError("Failed to extract data.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveData = async (updatedData: any[]) => {
+    if (!selectedFile) {
+      setError("Please select a file to save the data.");
+      return;
+    }
+    try {
+      setIsLoading(true);
+      setError(null);
+      await submitData(selectedFile.id, updatedData);
+      setData(updatedData);
+    } catch (err) {
+      setError("Failed to save data.");
     } finally {
       setIsLoading(false);
     }
@@ -98,38 +121,31 @@ export default function Home() {
             </select>
           </div>
 
+          <FileViewer files={files} onFileSelect={setSelectedFile} />
+        </div>
+
+        <div className="md:col-span-2 space-y-4">
           <div className="p-4 border rounded-lg">
             <h2 className="text-lg font-bold mb-2">Extract Data</h2>
             <input
               type="text"
-              placeholder="Table/Collection Name"
+              placeholder="Table Name"
               value={tableName}
               onChange={(e) => setTableName(e.target.value)}
               className="w-full p-2 border rounded mb-2"
             />
             <button
               onClick={handleExtractData}
-              className="w-full p-2 bg-green-500 text-white rounded hover:bg-green-600"
-              disabled={isLoading || !selectedConnection}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+              disabled={isLoading || !selectedConnection || !tableName}
             >
               {isLoading ? "Extracting..." : "Extract Data"}
             </button>
           </div>
 
-          <FileViewer />
-        </div>
+          {error && <p className="text-red-500">{error}</p>}
 
-        <div className="md:col-span-2">
-          {error && (
-            <div className="text-red-500 bg-red-100 p-2 rounded mb-4">{error}</div>
-          )}
-          {data.length > 0 ? (
-            <DataGrid data={data} columns={columns} setData={setData} />
-          ) : (
-            <div className="p-4 border rounded-lg text-center">
-              <p>No data extracted yet.</p>
-            </div>
-          )}
+          <DataGrid columns={columns} data={data} setData={setData} onSave={handleSaveData} />
         </div>
       </div>
     </main>

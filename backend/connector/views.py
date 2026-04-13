@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import DatabaseConnection, StoredFile
-from .serializers import DatabaseConnectionSerializer, StoredFileSerializer
+from .models import DatabaseConnection, StoredFile, ExtractedData
+from .serializers import DatabaseConnectionSerializer, StoredFileSerializer, ExtractedDataSerializer
 from .services import extract_data_in_batches
 import json
 import os
@@ -34,6 +34,11 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
                 with open(filepath, 'w') as f:
                     json.dump(batch, f, default=str)
 
+                ExtractedData.objects.create(
+                    connection=connection,
+                    data=batch
+                )
+
                 StoredFile.objects.create(
                     user=request.user,
                     filepath=filepath
@@ -50,7 +55,9 @@ class StoredFileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff: # Admin
+        if hasattr(user, 'role') and user.role == 'admin':
+            return StoredFile.objects.all()
+        if user.is_staff: # fallback for default admin user
             return StoredFile.objects.all()
         return StoredFile.objects.filter(user=user) | StoredFile.objects.filter(shared_with=user).distinct()
 

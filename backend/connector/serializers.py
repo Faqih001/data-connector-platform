@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DatabaseConnection, StoredFile
+from .models import DatabaseConnection, StoredFile, ExtractedData
 
 class DatabaseConnectionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -9,4 +9,9 @@ class DatabaseConnectionSerializer(serializers.ModelSerializer):
 class StoredFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StoredFile
+        fields = '__all__'
+
+class ExtractedDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExtractedData
         fields = '__all__'

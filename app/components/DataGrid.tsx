@@ -46,9 +46,10 @@ interface DataGridProps<TData> {
   data: TData[];
   columns: ColumnDef<TData>[];
   setData: React.Dispatch<React.SetStateAction<TData[]>>;
+  onSave?: (data: TData[]) => Promise<void>;
 }
 
-export function DataGrid<TData>({ data, columns, setData }: DataGridProps<TData>) {
+export function DataGrid<TData>({ data, columns, setData, onSave }: DataGridProps<TData>) {
   const table = useReactTable({
     data,
     columns,
@@ -107,6 +108,14 @@ export function DataGrid<TData>({ data, columns, setData }: DataGridProps<TData>
           ))}
         </tbody>
       </table>
+      {onSave && data.length > 0 && (
+        <button
+          onClick={() => onSave(data)}
+          className="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+        >
+          Save Changes
+        </button>
+      )}
     </div>
   );
 }

@@ -18,8 +18,7 @@ services:
       dockerfile: Dockerfile.backend
     command: ["./wait-for-it.sh", "db", "--", "python", "manage.py", "runserver", "0.0.0.0:8000"]
     volumes:
-      - ./backend:/app/backend
-      - ./wait-for-it.sh:/app/wait-for-it.sh
+      - ./backend:/app
     ports:
       - "8001:8000"
     env_file:

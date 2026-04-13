@@ -40,3 +40,20 @@ class StoredFile(models.Model):
     def __str__(self):
         return self.filepath
 
+
+class ExtractedData(models.Model):
+    connection = models.ForeignKey(DatabaseConnection, on_delete=models.CASCADE)
+    data = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Data from {self.connection.name} at {self.created_at}"
+
+
+class User(models.Model):
+    ROLES = (
+        ('admin', 'Admin'),
+        ('user', 'User'),
+    )
+    role = models.CharField(max_length=10, choices=ROLES, default='user')
+
