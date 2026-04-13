@@ -43,16 +43,6 @@ export async function getFiles(): Promise<any[]> {
     if (!response.ok) {
         throw new Error('Failed to fetch files');
     }
-    const responseData = response.json();
-    // Handle both paginated and direct array responses
-    return responseData instanceof Promise ? await responseData : responseData;
-}
-
-export async function getFileData(filePath: string): Promise<any[]> {
-    const response = await fetch(`${API_URL}/files/download/?filepath=${encodeURIComponent(filePath)}`);
-    if (!response.ok) {
-        throw new Error('Failed to fetch file data');
-    }
     return response.json();
 }
 

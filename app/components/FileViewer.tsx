@@ -37,22 +37,23 @@ export function FileViewer({ files, onFileSelect }: FileViewerProps) {
   const handleDownload = async (file: StoredFile, format: 'json' | 'csv') => {
     try {
       const fileName = getFileNameFromPath(file.filepath);
-      const fileUrl = `http://localhost:8001/api/media/${fileName}`;
+      const fileUrl = `http://localhost:8001/api/files/${file.id}/download/`;
       
       const response = await fetch(fileUrl);
       if (!response.ok) throw new Error('Failed to fetch file');
+      
+      const jsonData = await response.json();
       
       let data: string;
       let mimeType: string;
       let extension: string;
       
       if (format === 'csv') {
-        const jsonData = await response.json();
         data = jsonToCsv(jsonData);
         mimeType = 'text/csv';
         extension = 'csv';
       } else {
-        data = await response.text();
+        data = JSON.stringify(jsonData, null, 2);
         mimeType = 'application/json';
         extension = 'json';
       }
