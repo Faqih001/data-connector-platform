@@ -1,3 +1,5 @@
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
@@ -187,7 +189,13 @@ class StoredFileViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
         """Share file with other users"""
-        file = self.get_object()
+        try:
+            file = self.get_object()
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to get file: {str(e)}"},
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         # Only owner or admin can share
         is_owner = file.user == request.user
@@ -195,7 +203,7 @@ class StoredFileViewSet(viewsets.ModelViewSet):
         
         if not (is_owner or is_admin):
             return Response(
-                {"error": "❌ Permission denied. Only the file owner can share this file."},
+                {"error": f"❌ Permission denied. User: {request.user.username}, is_staff: {request.user.is_staff}, Owner: {file.user}"},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -377,8 +385,6 @@ def welcome(request):
     return render(request, 'welcome.html', context)
 
 
-@csrf_exempt
-@api_view(['POST'])
 def login_view(request):
     """Login endpoint for session-based authentication"""
     from django.contrib.auth import authenticate, login
@@ -408,6 +414,11 @@ def login_view(request):
             {"error": "❌ Invalid username or password"},
             status=status.HTTP_401_UNAUTHORIZED
         )
+
+
+@csrf_exempt
+@api_view(['POST'])
+def login_view(request):
 
 
 @csrf_exempt
