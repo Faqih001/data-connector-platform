@@ -75,7 +75,9 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
 
   const fetchFileAccess = async (fileId: number) => {
     try {
-      const response = await fetch(`${API_URL}/files/${fileId}/permissions/`);
+      const response = await fetch(`${API_URL}/files/${fileId}/permissions/`, {
+        credentials: 'include'
+      });
       if (response.ok) {
         const data = await response.json();
         setFileAccess(prev => ({
@@ -179,6 +181,7 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
     try {
       // In real implementation, search users by email and get their IDs
       const response = await fetch(`${API_URL}/files/${shareModal.fileId}/share/`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_ids: [1] }) // Placeholder - would search by email
@@ -212,7 +215,9 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
       const fileName = getFileNameFromPath(file.filepath);
       const fileUrl = `http://localhost:8001/api/files/${file.id}/download/`;
       
-      const response = await fetch(fileUrl);
+      const response = await fetch(fileUrl, {
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to fetch file');
       
       const jsonData = await response.json();
@@ -247,17 +252,17 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
   };
 
   return (
-    <div className="p-4 border rounded-lg">
-      <h2 className="text-lg font-bold mb-4">Stored Files</h2>
+    <div className="p-4 border rounded-lg bg-white shadow-sm">
+      <h2 className="text-base sm:text-lg font-bold mb-3">Stored Files</h2>
       
       {visibleFiles.length === 0 && deletedFiles.length === 0 ? (
-        <p className="text-gray-500">No files yet</p>
+        <p className="text-gray-500 text-sm">No files yet</p>
       ) : (
         <>
           {/* Active Files Section */}
           {visibleFiles.length > 0 && (
             <div className="mb-6">
-              <div className="flex items-center gap-3 mb-3 p-3 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 p-2 sm:p-3 bg-gray-50 rounded text-sm">
                 <input
                   type="checkbox"
                   checked={selectedFiles.size === visibleFiles.length && visibleFiles.length > 0}
@@ -265,7 +270,7 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
                   className="w-4 h-4"
                   title="Select all files"
                 />
-                <span className="text-sm font-medium">
+                <span className="text-xs sm:text-sm font-medium">
                   {selectedFiles.size > 0 
                     ? `${selectedFiles.size} selected` 
                     : `${visibleFiles.length} file${visibleFiles.length !== 1 ? 's' : ''}`}
@@ -273,9 +278,9 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
                 {selectedFiles.size > 0 && (
                   <button
                     onClick={handleDeleteFiles}
-                    className="ml-auto px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                    className="sm:ml-auto px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 transition"
                   >
-                    Delete Selected ({selectedFiles.size})
+                    Delete ({selectedFiles.size})
                   </button>
                 )}
               </div>
@@ -288,24 +293,24 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
                   const access = fileAccess[file.id];
                   
                   return (
-                    <li key={file.id} className={`border rounded p-3 ${isSelected ? 'bg-blue-50 border-blue-300' : ''}`}>
-                      <div className="flex items-start gap-3">
+                    <li key={file.id} className={`border rounded p-2 sm:p-3 text-xs sm:text-sm ${isSelected ? 'bg-blue-50 border-blue-300' : ''}`}>
+                      <div className="flex items-start gap-2">
                         {access?.can_modify && (
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleSelectFile(file.id)}
-                            className="w-4 h-4 mt-1"
+                            className="w-4 h-4 mt-1 flex-shrink-0"
                           />
                         )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1 flex-wrap">
                             <button
                               onClick={() => {
                                 setExpandedFileId(isExpanded ? null : file.id);
                                 if (onFileSelect) onFileSelect(isExpanded ? null : file);
                               }}
-                              className="text-left text-sm font-medium hover:underline"
+                              className="text-left text-xs sm:text-sm font-medium hover:underline break-words"
                             >
                               {fileName}
                             </button>

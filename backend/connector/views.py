@@ -12,6 +12,8 @@ from django.conf import settings
 from datetime import datetime
 from django.shortcuts import render
 from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 class DatabaseConnectionViewSet(viewsets.ModelViewSet):
     queryset = DatabaseConnection.objects.all()
@@ -372,3 +374,74 @@ def welcome(request):
         'admin_password': 'admin123',
     }
     return render(request, 'welcome.html', context)
+
+
+@csrf_exempt
+@api_view(['POST'])
+def login_view(request):
+    """Login endpoint for session-based authentication"""
+    from django.contrib.auth import authenticate, login
+    
+    username = request.data.get('username')
+    password = request.data.get('password')
+    
+    if not username or not password:
+        return Response(
+            {"error": "Username and password are required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    user = authenticate(request, username=username, password=password)
+    if user is not None:
+        login(request, user)
+        return Response({
+            "message": "✅ Login successful",
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "is_staff": user.is_staff
+            }
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response(
+            {"error": "❌ Invalid username or password"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+
+@csrf_exempt
+@api_view(['POST'])
+def logout_view(request):
+    """Logout endpoint"""
+    from django.contrib.auth import logout
+    
+    logout(request)
+    return Response(
+        {"message": "✅ Logout successful"},
+        status=status.HTTP_200_OK
+    )
+
+
+@csrf_exempt
+@api_view(['GET'])
+def csrf_token_view(request):
+    """Get CSRF token for login"""
+    from django.middleware.csrf import get_token
+    token = get_token(request)
+    return Response({"csrfToken": token}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def current_user(request):
+    """Get current logged-in user info"""
+    if request.user.is_authenticated:
+        return Response({
+            "id": request.user.id,
+            "username": request.user.username,
+            "is_staff": request.user.is_staff
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response(
+            {"error": "Not authenticated"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )

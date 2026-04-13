@@ -37,7 +37,7 @@ const EditableCell = ({
       value={value as string}
       onChange={(e) => setValue(e.target.value)}
       onBlur={onBlur}
-      className="w-full bg-transparent"
+      className="w-full bg-transparent border-0 focus:outline-none text-xs sm:text-sm"
     />
   );
 };
@@ -75,15 +75,15 @@ export function DataGrid<TData>({ data, columns, setData, onSave }: DataGridProp
   });
 
   return (
-    <div className="p-2">
-      <table className="min-w-full divide-y divide-gray-200">
+    <div className="p-2 bg-white rounded-lg border overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
         <thead className="bg-gray-50">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"
                 >
                   {header.isPlaceholder
                     ? null
@@ -98,9 +98,9 @@ export function DataGrid<TData>({ data, columns, setData, onSave }: DataGridProp
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id}>
+            <tr key={row.id} className="hover:bg-gray-50">
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-6 py-4 whitespace-nowrap">
+                <td key={cell.id} className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
@@ -111,7 +111,7 @@ export function DataGrid<TData>({ data, columns, setData, onSave }: DataGridProp
       {onSave && data.length > 0 && (
         <button
           onClick={() => onSave(data)}
-          className="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          className="mt-4 px-4 py-2 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 transition text-sm"
         >
           Save Changes
         </button>

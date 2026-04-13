@@ -2,8 +2,12 @@ import { DatabaseConnection } from '@/app/types';
 
 export const API_URL = 'http://localhost:8001/api';
 
+const fetchOptions = {
+  credentials: 'include' as const,
+};
+
 export async function getConnections(): Promise<DatabaseConnection[]> {
-  const response = await fetch(`${API_URL}/connections/`);
+  const response = await fetch(`${API_URL}/connections/`, fetchOptions);
   if (!response.ok) {
     throw new Error('Failed to fetch connections');
   }
@@ -12,6 +16,7 @@ export async function getConnections(): Promise<DatabaseConnection[]> {
 
 export async function createConnection(connection: Omit<DatabaseConnection, 'id' | 'created_at'>): Promise<DatabaseConnection> {
   const response = await fetch(`${API_URL}/connections/`, {
+    ...fetchOptions,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -31,6 +36,7 @@ export async function extractData(
   format: 'json' | 'csv' = 'json'
 ): Promise<any[]> {
   const response = await fetch(`${API_URL}/connections/${connectionId}/extract_data/`, {
+    ...fetchOptions,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +55,7 @@ export async function extractData(
 }
 
 export async function getFiles(): Promise<any[]> {
-    const response = await fetch(`${API_URL}/files/`);
+    const response = await fetch(`${API_URL}/files/`, fetchOptions);
     if (!response.ok) {
         throw new Error('Failed to fetch files');
     }
@@ -58,6 +64,7 @@ export async function getFiles(): Promise<any[]> {
 
 export async function submitData(fileId: number, data: any[]): Promise<void> {
     const response = await fetch(`${API_URL}/files/${fileId}/submit_data/`, {
+        ...fetchOptions,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

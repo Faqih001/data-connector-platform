@@ -22,7 +22,7 @@ export function ConnectionForm({ onSubmit, isLoading }: ConnectionFormProps) {
   const [name, setName] = useState('');
   const [db_type, setDbType] = useState<'postgresql' | 'mysql' | 'mongodb' | 'clickhouse'>('postgresql');
   const [host, setHost] = useState(DEFAULT_HOST);
-  const [port, setPort] = useState(DEFAULT_PORTS.postgresql);
+  const [port, setPort] = useState<number>(DEFAULT_PORTS.postgresql);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [database_name, setDatabaseName] = useState('');
@@ -40,23 +40,25 @@ export function ConnectionForm({ onSubmit, isLoading }: ConnectionFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg">
+    <form onSubmit={handleSubmit} className="space-y-3 p-4 border rounded-lg bg-white shadow-sm">
+      <h2 className="text-base sm:text-lg font-bold">Create Connection</h2>
       <div>
-        <label className="block text-sm font-medium">Name</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">Name</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full p-2 border rounded"
+          placeholder="e.g., My PostgreSQL DB"
+          className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
       <div>
-        <label className="block text-sm font-medium">Database Type</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">Database Type</label>
         <select
           value={db_type}
           onChange={(e) => handleDbTypeChange(e.target.value as any)}
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="postgresql">PostgreSQL (Default: localhost:5432)</option>
           <option value="mysql">MySQL (Default: localhost:3306)</option>
@@ -64,60 +66,65 @@ export function ConnectionForm({ onSubmit, isLoading }: ConnectionFormProps) {
           <option value="clickhouse">ClickHouse (Default: localhost:9000)</option>
         </select>
       </div>
-      <div>
-        <label className="block text-sm font-medium">Host</label>
-        <input
-          type="text"
-          value={host}
-          onChange={(e) => setHost(e.target.value)}
-          placeholder={DEFAULT_HOST}
-          className="w-full p-2 border rounded"
-          required
-        />
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs sm:text-sm font-medium mb-1">Host</label>
+          <input
+            type="text"
+            value={host}
+            onChange={(e) => setHost(e.target.value)}
+            placeholder={DEFAULT_HOST}
+            className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs sm:text-sm font-medium mb-1">Port</label>
+          <input
+            type="number"
+            value={port}
+            onChange={(e) => setPort(parseInt(e.target.value))}
+            placeholder={DEFAULT_PORTS[db_type].toString()}
+            className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+        </div>
       </div>
       <div>
-        <label className="block text-sm font-medium">Port</label>
-        <input
-          type="number"
-          value={port}
-          onChange={(e) => setPort(parseInt(e.target.value))}
-          placeholder={DEFAULT_PORTS[db_type].toString()}
-          className="w-full p-2 border rounded"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium">Username</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">Username</label>
         <input
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="w-full p-2 border rounded"
+          placeholder="e.g., postgres"
+          className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
       <div>
-        <label className="block text-sm font-medium">Password</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">Password</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 border rounded"
+          placeholder="Enter password"
+          className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium">Database Name</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">Database Name</label>
         <input
           type="text"
           value={database_name}
           onChange={(e) => setDatabaseName(e.target.value)}
-          className="w-full p-2 border rounded"
+          placeholder="e.g., mydb"
+          className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
       <button
         type="submit"
-        className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        className="w-full p-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition text-sm sm:text-base"
         disabled={isLoading}
       >
         {isLoading ? 'Connecting...' : 'Create Connection'}
