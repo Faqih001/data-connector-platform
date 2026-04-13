@@ -9,4 +9,12 @@ export interface DatabaseConnection {
     database_name: string;
     created_at: string;
   }
+
+export interface StoredFile {
+    id: number;
+    filepath: string;
+    user?: number | null;
+    shared_with?: number[];
+    created_at?: string;
+  }
   

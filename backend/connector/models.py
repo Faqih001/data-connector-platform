@@ -33,7 +33,7 @@ class DatabaseConnection(models.Model):
 
 
 class StoredFile(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     filepath = models.CharField(max_length=255)
     shared_with = models.ManyToManyField(User, related_name='shared_files')
 
