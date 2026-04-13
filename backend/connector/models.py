@@ -33,9 +33,18 @@ class DatabaseConnection(models.Model):
 
 
 class StoredFile(models.Model):
+    FORMAT_CHOICES = [
+        ('json', 'JSON'),
+        ('csv', 'CSV'),
+    ]
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    extracted_data = models.OneToOneField(ExtractedData, on_delete=models.CASCADE, null=True, blank=True, related_name='stored_file')
     filepath = models.CharField(max_length=255)
+    format_type = models.CharField(max_length=10, choices=FORMAT_CHOICES, default='json')
     shared_with = models.ManyToManyField(User, related_name='shared_files')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.filepath
@@ -45,9 +54,14 @@ class ExtractedData(models.Model):
     connection = models.ForeignKey(DatabaseConnection, on_delete=models.CASCADE)
     data = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Data from {self.connection.name} at {self.created_at}"
+    
+    class Meta:
+        verbose_name = "Extracted Data"
+        verbose_name_plural = "Extracted Data"
 
 
 class User(models.Model):
