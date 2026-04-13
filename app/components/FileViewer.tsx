@@ -52,6 +52,9 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
   const [shareModal, setShareModal] = useState<{ open: boolean; fileId: number | null }>({ open: false, fileId: null });
   const [shareEmail, setShareEmail] = useState('');
   const [loadingShare, setLoadingShare] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Update visible files when input files change
   useEffect(() => {

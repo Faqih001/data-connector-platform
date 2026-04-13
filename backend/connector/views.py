@@ -14,6 +14,7 @@ from django.shortcuts import render
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.db.models import Q
 
 class DatabaseConnectionViewSet(viewsets.ModelViewSet):
     queryset = DatabaseConnection.objects.all()
@@ -444,4 +445,31 @@ def current_user(request):
         return Response(
             {"error": "Not authenticated"},
             status=status.HTTP_401_UNAUTHORIZED
+        )
+
+
+@api_view(['GET'])
+def search_users(request):
+    """Search for users by email or username"""
+    query = request.query_params.get('q', '').strip()
+    
+    if not query or len(query) < 2:
+        return Response(
+            {"error": "Search query must be at least 2 characters"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        # Search by username or email
+        users = User.objects.filter(
+            Q(username__icontains=query) | Q(email__icontains=query)
+        ).exclude(id=request.user.id).values('id', 'username', 'email')[:10]
+        
+        return Response({
+            "results": list(users)
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
