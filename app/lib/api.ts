@@ -24,18 +24,28 @@ export async function createConnection(connection: Omit<DatabaseConnection, 'id'
   return response.json();
 }
 
-export async function extractData(connectionId: number, tableName: string): Promise<any[]> {
+export async function extractData(
+  connectionId: number, 
+  tableName: string,
+  batchSize: number = 1000,
+  format: 'json' | 'csv' = 'json'
+): Promise<any[]> {
   const response = await fetch(`${API_URL}/connections/${connectionId}/extract_data/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ table_name: tableName }),
+    body: JSON.stringify({ 
+      table_name: tableName,
+      batch_size: batchSize,
+      format: format
+    }),
   });
   if (!response.ok) {
     throw new Error('Failed to extract data');
   }
-  return response.json();
+  const result = await response.json();
+  return result.data || result;
 }
 
 export async function getFiles(): Promise<any[]> {

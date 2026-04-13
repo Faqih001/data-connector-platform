@@ -14,6 +14,8 @@ export default function Home() {
     DatabaseConnection | null
   >(null);
   const [tableName, setTableName] = useState("");
+  const [batchSize, setBatchSize] = useState<number>(1000);
+  const [format, setFormat] = useState<'json' | 'csv'>('json');
   const [data, setData] = useState<any[]>([]);
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<StoredFile | null>(null);
@@ -61,7 +63,7 @@ export default function Home() {
     try {
       setIsLoading(true);
       setError(null);
-      const extractedData = await extractData(selectedConnection.id, tableName);
+      const extractedData = await extractData(selectedConnection.id, tableName, batchSize, format);
       setData(extractedData);
     } catch (err) {
       setError("Failed to extract data.");
@@ -134,9 +136,33 @@ export default function Home() {
               onChange={(e) => setTableName(e.target.value)}
               className="w-full p-2 border rounded mb-2"
             />
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label className="block text-sm font-medium mb-1">Batch Size</label>
+                <input
+                  type="number"
+                  value={batchSize}
+                  onChange={(e) => setBatchSize(parseInt(e.target.value) || 1000)}
+                  min="1"
+                  className="w-full p-2 border rounded"
+                  placeholder="Rows per batch"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Format</label>
+                <select
+                  value={format}
+                  onChange={(e) => setFormat(e.target.value as 'json' | 'csv')}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="json">JSON</option>
+                  <option value="csv">CSV</option>
+                </select>
+              </div>
+            </div>
             <button
               onClick={handleExtractData}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+              className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
               disabled={isLoading || !selectedConnection || !tableName}
             >
               {isLoading ? "Extracting..." : "Extract Data"}

@@ -8,14 +8,31 @@ interface ConnectionFormProps {
   isLoading: boolean;
 }
 
+// Default ports for different database types
+const DEFAULT_PORTS = {
+  postgresql: 5432,
+  mysql: 3306,
+  mongodb: 27017,
+  clickhouse: 9000,
+} as const;
+
+const DEFAULT_HOST = 'localhost';
+
 export function ConnectionForm({ onSubmit, isLoading }: ConnectionFormProps) {
   const [name, setName] = useState('');
   const [db_type, setDbType] = useState<'postgresql' | 'mysql' | 'mongodb' | 'clickhouse'>('postgresql');
-  const [host, setHost] = useState('');
-  const [port, setPort] = useState(5432);
+  const [host, setHost] = useState(DEFAULT_HOST);
+  const [port, setPort] = useState(DEFAULT_PORTS.postgresql);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [database_name, setDatabaseName] = useState('');
+
+  // Handle database type change - auto-update host and port
+  const handleDbTypeChange = (newType: 'postgresql' | 'mysql' | 'mongodb' | 'clickhouse') => {
+    setDbType(newType);
+    setHost(DEFAULT_HOST);
+    setPort(DEFAULT_PORTS[newType]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,13 +55,13 @@ export function ConnectionForm({ onSubmit, isLoading }: ConnectionFormProps) {
         <label className="block text-sm font-medium">Database Type</label>
         <select
           value={db_type}
-          onChange={(e) => setDbType(e.target.value as any)}
+          onChange={(e) => handleDbTypeChange(e.target.value as any)}
           className="w-full p-2 border rounded"
         >
-          <option value="postgresql">PostgreSQL</option>
-          <option value="mysql">MySQL</option>
-          <option value="mongodb">MongoDB</option>
-          <option value="clickhouse">ClickHouse</option>
+          <option value="postgresql">PostgreSQL (Default: localhost:5432)</option>
+          <option value="mysql">MySQL (Default: localhost:3306)</option>
+          <option value="mongodb">MongoDB (Default: localhost:27017)</option>
+          <option value="clickhouse">ClickHouse (Default: localhost:9000)</option>
         </select>
       </div>
       <div>
@@ -53,6 +70,7 @@ export function ConnectionForm({ onSubmit, isLoading }: ConnectionFormProps) {
           type="text"
           value={host}
           onChange={(e) => setHost(e.target.value)}
+          placeholder={DEFAULT_HOST}
           className="w-full p-2 border rounded"
           required
         />
@@ -63,6 +81,7 @@ export function ConnectionForm({ onSubmit, isLoading }: ConnectionFormProps) {
           type="number"
           value={port}
           onChange={(e) => setPort(parseInt(e.target.value))}
+          placeholder={DEFAULT_PORTS[db_type].toString()}
           className="w-full p-2 border rounded"
           required
         />

@@ -39,7 +39,7 @@ class StoredFile(models.Model):
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    extracted_data = models.OneToOneField(ExtractedData, on_delete=models.CASCADE, null=True, blank=True, related_name='stored_file')
+    extracted_data = models.OneToOneField('ExtractedData', on_delete=models.CASCADE, null=True, blank=True, related_name='stored_file')
     filepath = models.CharField(max_length=255)
     format_type = models.CharField(max_length=10, choices=FORMAT_CHOICES, default='json')
     shared_with = models.ManyToManyField(User, related_name='shared_files')

@@ -2,6 +2,21 @@
 
 This is a full-stack web application that allows users to connect to multiple databases, extract data in batches, edit the data in a grid, and send it to a backend for processing and storage.
 
+## 🚀 Quick Start
+
+**👉 [Go to SETUP.md](SETUP.md)** for complete setup and development instructions.
+
+Quick summary:
+```bash
+npm install && cd backend && pip install -r requirements.txt && cd ..
+cd backend && python manage.py migrate && cd ..
+npm run backend  # Terminal 1
+npm run frontend # Terminal 2
+# Open http://localhost:3000
+```
+
+---
+
 ## Architecture Overview
 
 The application is a monorepo with a Next.js frontend and a Django REST Framework backend. The entire application is containerized using Docker and Docker Compose.
@@ -38,12 +53,16 @@ This design follows the Strategy pattern, making the system modular and easy to 
 
 ## Setup Instructions
 
+### Quick Setup (Recommended)
+See **[SETUP.md](SETUP.md)** for complete, step-by-step instructions.
+
+### Docker Setup (Alternative)
 1.  **Clone the repository**:
     ```bash
     git clone <repository-url>
     cd data-connector-platform
     ```
-2.  **Build and run the application**:
+2.  **Build and run with Docker**:
     ```bash
     docker-compose up --build
     ```

@@ -87,15 +87,20 @@ export function FileViewer({ files, onFileSelect }: FileViewerProps) {
             return (
               <li key={file.id} className="border rounded p-2">
                 <div className="flex justify-between items-center">
-                  <button
-                    onClick={() => {
-                      setExpandedFileId(isExpanded ? null : file.id);
-                      if (onFileSelect) onFileSelect(isExpanded ? null : file);
-                    }}
-                    className="flex-1 text-left text-sm font-medium hover:underline"
-                  >
-                    {fileName}
-                  </button>
+                  <div className="flex-1">
+                    <button
+                      onClick={() => {
+                        setExpandedFileId(isExpanded ? null : file.id);
+                        if (onFileSelect) onFileSelect(isExpanded ? null : file);
+                      }}
+                      className="text-left text-sm font-medium hover:underline"
+                    >
+                      {fileName}
+                    </button>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Format: <span className="font-medium uppercase">{file.format_type || 'json'}</span>
+                    </div>
+                  </div>
                 </div>
                 {isExpanded && (
                   <div className="mt-2 pt-2 border-t space-y-2">

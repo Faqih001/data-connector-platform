@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "backend": "node port-detector.js backend",
+    "frontend": "node port-detector.js frontend"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
