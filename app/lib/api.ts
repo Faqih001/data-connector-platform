@@ -106,16 +106,31 @@ export async function getTables(connectionId: number): Promise<string[]> {
     if (!response.ok) {
         throw new Error('Failed to fetch tables');
     }
-    const result = await response.json();
-    return result.tables || [];
+    return response.json();
 }
 
-export const getExtractedDataByTable = async (connectionId: number, tableName: string): Promise<ExtractedData> => {
-  const response = await apiClient.get(`/extracted_data/by_table/?connection_id=${connectionId}&table_name=${tableName}`);
-  return response.data;
-};
+export async function getExtractedDataByTable(connectionId: number, tableName: string): Promise<any> {
+    const response = await fetch(
+        `${API_URL}/extracted_data/by_table/?connection_id=${connectionId}&table_name=${tableName}`,
+        fetchOptions
+    );
+    if (!response.ok) {
+        throw new Error('Failed to fetch extracted data');
+    }
+    return response.json();
+}
 
-export const updateExtractedData = async (id: number, data: any): Promise<ExtractedData> => {
-  const response = await apiClient.patch(`/extracted_data/${id}/`, { data });
-  return response.data;
-};
+export async function updateExtractedData(id: number, data: any): Promise<any> {
+    const response = await fetch(`${API_URL}/extracted_data/${id}/`, {
+        ...fetchOptions,
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data }),
+    });
+    if (!response.ok) {
+        throw new Error('Failed to update extracted data');
+    }
+    return response.json();
+}

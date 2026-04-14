@@ -26,4 +26,12 @@ export interface StoredFile {
     created_at?: string;
     updated_at?: string;
 }
+
+export interface ExtractedData {
+    id: number;
+    connection_id: number;
+    data: any[];
+    created_at?: string;
+    updated_at?: string;
+}
   

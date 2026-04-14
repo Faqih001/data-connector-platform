@@ -5,7 +5,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataGrid } from "./components/DataGrid";
 import { ConnectionForm } from "./components/ConnectionForm";
 import { FileViewer } from "./components/FileViewer";
-import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable } from "./lib/api";
+import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData } from "./lib/api";
 import { DatabaseConnection, StoredFile } from "./types";
 
 const API_URL = 'http://localhost:8001/api';
@@ -389,7 +389,7 @@ export default function Home() {
 
           {/* Right Sidebar - Connections + Extract Data + DataGrid */}
           <div className="lg:col-span-2 space-y-4 lg:max-h-screen lg:overflow-y-auto pl-2">
-            {/* Connections Section - Moved to top of right sidebar */}
+            {/* Connections Section */}
             <div className="p-4 border rounded-lg bg-white shadow-sm">
               <h2 className="text-base sm:text-lg font-bold mb-3">🔗 Connections</h2>
               <select
@@ -412,33 +412,31 @@ export default function Home() {
             {/* Extract Data Section */}
             <div className="p-4 border rounded-lg bg-white shadow-sm">
               <h2 className="text-base sm:text-lg font-bold mb-3">📊 Extract Data</h2>
-              
-              {/* Table Name Dropdown */}
               <div className="mb-3">
                 <label htmlFor="tableName" className="block text-sm font-medium text-gray-700">
-                    Table Name
-                  </label>
-                  <select
-                    id="tableName"
-                    value={tableName}
-                    onChange={(e) => setTableName(e.target.value)}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    disabled={!selectedConnection || availableTables.length === 0}
-                  >
-                    <option value="">{availableTables.length > 0 ? 'Select a table' : 'No tables found'}</option>
-                    {availableTables.map((table) => (
-                      <option key={table} value={table}>
-                        {table}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  Table Name
+                </label>
+                <select
+                  id="tableName"
+                  value={tableName}
+                  onChange={(e) => setTableName(e.target.value)}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  disabled={!selectedConnection || availableTables.length === 0}
+                >
+                  <option value="">{availableTables.length > 0 ? 'Select a table' : 'No tables found'}</option>
+                  {availableTables.map((table) => (
+                    <option key={table} value={table}>
+                      {table}
+                    </option>
+                  ))}
+                </select>
               </div>
               {error && <p className="text-red-500 mt-4">{error}</p>}
             </div>
 
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-4">Extracted Data</h2>
+            {/* Extracted Data Grid */}
+            <div className="p-4 border rounded-lg bg-white shadow-sm">
+              <h2 className="text-base sm:text-lg font-bold mb-4">📊 Extracted Data</h2>
               <DataGrid
                 columns={columns}
                 data={data}
