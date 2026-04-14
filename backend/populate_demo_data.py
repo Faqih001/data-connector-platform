@@ -205,6 +205,12 @@ for username, user in users_map.items():
                 
                 # Create stored file linked to this extraction with new fields
                 filepath = os.path.join(settings.MEDIA_ROOT, f"{base_filename}_{timestamp}.json")
+                
+                # Ensure media directory exists and write the JSON file
+                os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+                with open(filepath, 'w') as f:
+                    json.dump(sample_data, f, default=str, indent=2)
+                
                 stored_file = StoredFile.objects.create(
                     user=user,
                     extracted_data=extracted_data,
