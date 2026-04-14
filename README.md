@@ -2,7 +2,33 @@
 
 This is a full-stack web application that allows users to connect to multiple databases, extract data in batches, edit the data in a grid, and send it to a backend for processing and storage.
 
-## 🚀 Quick Start
+## 🎯 Getting Started (Choose One)
+
+### ⚡ For Everyone - Automated Setup (Recommended)
+
+**Linux/macOS:**
+```bash
+cd /path/to/data-connector-platform
+chmod +x setup.sh
+bash setup.sh
+```
+
+**Windows:**
+1. Open Command Prompt or PowerShell as Administrator
+2. Navigate to the project folder
+3. Run: `setup.bat`
+
+The script will automatically install everything and set up demo data!
+
+### 📖 **For Detailed Instructions → [Go to SETUP.md](SETUP.md)**
+- Step-by-step guide for beginners
+- Troubleshooting section
+- Manual setup instructions
+- Development tips
+
+---
+
+## 🚀 Quick Start (Manual)
 
 **👉 [Go to SETUP.md](SETUP.md)** for complete setup and development instructions.
 
@@ -14,6 +40,27 @@ npm run backend  # Terminal 1 - starts on port 8001
 npm run frontend # Terminal 2 - starts on port 3000
 # Open http://localhost:3000
 ```
+
+**Demo Credentials:**
+- **Username:** `admin` | **Password:** `admin123` (Admin Account)
+- **Username:** `john_sales` | **Password:** `john123`
+- **Username:** `sarah_analytics` | **Password:** `sarah456`
+- **Username:** `mike_reporting` | **Password:** `mike789`
+
+---
+
+## ✨ Features
+
+- 🔐 **Secure Authentication**: Session-based login with CSRF protection
+- 🔌 **Multi-Database Support**: Connect to PostgreSQL, MySQL, MongoDB, ClickHouse
+- 📊 **Data Extraction**: Extract data in configurable batches (JSON or CSV)
+- ✏️ **Data Editing**: Edit extracted data in an interactive grid
+- 💾 **Data Storage**: Store files and extracted data with version history
+- 👥 **User Management**: Multiple user roles (Admin, Sales, Analytics, Reporting)
+- 🔄 **Batch Processing**: Process large datasets efficiently
+- 📱 **Responsive UI**: Works on desktop and tablet devices
+- 🎨 **Modern Design**: Clean, intuitive interface with Tailwind CSS
+- 🔍 **API Browsable**: Django REST Framework browsable API
 
 ---
 
