@@ -8,7 +8,7 @@ from .views import (
 router = DefaultRouter()
 router.register(r'connections', DatabaseConnectionViewSet, basename='connection')
 router.register(r'files', StoredFileViewSet)
-router.register(r'extracted_data', ExtractedDataViewSet)
+router.register(r'extracted_data', ExtractedDataViewSet, basename='extracted_data')
 
 urlpatterns = [
     path('', include(router.urls)),
