@@ -7,6 +7,7 @@ import {
   ColumnDef,
 } from '@tanstack/react-table';
 import { useState, useEffect } from 'react';
+import { Modal } from './Modal';
 
 interface EditableCellProps {
   getValue: () => any;
@@ -53,6 +54,13 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
   const [isSaving, setIsSaving] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [newColumnName, setNewColumnName] = useState('');
+  const [modal, setModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'error' | 'success' | 'warning';
+    onConfirm?: () => void;
+  }>({ isOpen: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     setData(initialData);
@@ -102,7 +110,12 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
 
   const handleAddColumn = () => {
     if (!newColumnName.trim()) {
-      alert('Please enter a column name');
+      setModal({
+        isOpen: true,
+        title: 'Missing Column Name',
+        message: 'Please enter a column name before adding.',
+        type: 'warning',
+      });
       return;
     }
     const updatedData = data.map(row => ({
@@ -111,6 +124,12 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
     })) as TData[];
     setData(updatedData);
     setNewColumnName('');
+    setModal({
+      isOpen: true,
+      title: 'Column Added',
+      message: `Column "${newColumnName}" has been added successfully.`,
+      type: 'success',
+    });
   };
 
   const handleDeleteColumn = (columnName: string) => {
@@ -144,9 +163,20 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
       setIsSaving(true);
       try {
         await onSave(data);
+        setModal({
+          isOpen: true,
+          title: '✅ Success',
+          message: 'All changes have been saved successfully!',
+          type: 'success',
+        });
       } catch (error) {
         console.error("Failed to save data:", error);
-        // Optionally show an error message to the user
+        setModal({
+          isOpen: true,
+          title: '❌ Save Failed',
+          message: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
+          type: 'error',
+        });
       } finally {
         setIsSaving(false);
       }
@@ -274,6 +304,14 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
           No data available. Click <strong>Add Row</strong> to get started.
         </div>
       )}
+
+      <Modal
+        isOpen={modal.isOpen}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        onClose={() => setModal({ ...modal, isOpen: false })}
+      />
     </div>
   );
 }

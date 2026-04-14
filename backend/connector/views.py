@@ -626,17 +626,33 @@ class ExtractedDataViewSet(viewsets.ModelViewSet):
         """
         Allow updating the 'data' field of an ExtractedData instance.
         """
-        instance = self.get_object()
-        
-        # Security check: ensure user has permission
-        if not (request.user.is_staff or request.user.is_superuser):
-            # Check if the user owns the connection or the file
-            is_connection_owner = instance.connection.user == request.user
-            is_file_owner = StoredFile.objects.filter(extracted_data=instance, user=request.user).exists()
-            if not is_connection_owner and not is_file_owner:
-                return Response({"error": "You do not have permission to edit this data."}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            instance = self.get_object()
+            
+            # Security check: ensure user has permission
+            if not (request.user.is_staff or request.user.is_superuser):
+                # Check if the user owns the connection or the file
+                is_connection_owner = instance.connection.user == request.user
+                is_file_owner = StoredFile.objects.filter(extracted_data=instance, user=request.user).exists()
+                if not is_connection_owner and not is_file_owner:
+                    return Response({"error": "You do not have permission to edit this data."}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            if not serializer.is_valid():
+                return Response({
+                    "error": "Validation failed",
+                    "details": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer.save()
+            return Response({
+                "success": True,
+                "message": "Data updated successfully",
+                "data": serializer.data
+            })
+        except Exception as e:
+            import traceback
+            return Response({
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
