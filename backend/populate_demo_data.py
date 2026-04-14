@@ -14,6 +14,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
 
 from django.contrib.auth.models import User
+from django.conf import settings
 from connector.models import DatabaseConnection, StoredFile, ExtractedData
 
 print("=" * 80)
@@ -203,10 +204,11 @@ for username, user in users_map.items():
                 timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
                 
                 # Create stored file linked to this extraction with new fields
+                filepath = os.path.join(settings.MEDIA_ROOT, f"{base_filename}_{timestamp}.json")
                 stored_file = StoredFile.objects.create(
                     user=user,
                     extracted_data=extracted_data,
-                    filepath=f"/media/{base_filename}_{timestamp}.json",
+                    filepath=filepath,
                     format_type='json',
                     base_filename=base_filename,
                     table_name=table_name,
