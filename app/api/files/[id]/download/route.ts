@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const res = await fetch(`http://localhost:8001/api/files/${params.id}/download/`, {
+    const { id } = await params;
+    
+    const res = await fetch(`http://localhost:8001/api/files/${id}/download/`, {
       method: 'GET',
       credentials: 'include',
       headers: {
