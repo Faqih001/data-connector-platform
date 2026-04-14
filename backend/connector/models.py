@@ -44,8 +44,13 @@ class StoredFile(models.Model):
     filepath = models.CharField(max_length=255)
     format_type = models.CharField(max_length=10, choices=FORMAT_CHOICES, default='json')
     shared_with = models.ManyToManyField(User, related_name='shared_files')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    
+    # New fields for better file naming and filtering
+    base_filename = models.CharField(max_length=255, null=True, blank=True, help_text="Base filename without timestamp")
+    table_name = models.CharField(max_length=255, null=True, blank=True, help_text="Original table name")
+    connection_name = models.CharField(max_length=255, null=True, blank=True, help_text="Database connection name")
+    extracted_at = models.DateTimeField(auto_now_add=True)
+    last_modified_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.filepath

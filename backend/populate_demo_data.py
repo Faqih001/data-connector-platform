@@ -198,12 +198,19 @@ for username, user in users_map.items():
                     data=sample_data
                 )
                 
-                # Create stored file linked to this extraction
+                # Generate base filename without timestamp
+                base_filename = f"extraction_{db_type}_{table_name}_{username}"
+                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                
+                # Create stored file linked to this extraction with new fields
                 stored_file = StoredFile.objects.create(
                     user=user,
                     extracted_data=extracted_data,
-                    filepath=f"/media/extraction_{db_type}_{table_name}_{username}_{datetime.now().strftime('%Y%m%d%H%M%S')}.json",
-                    format_type='json'
+                    filepath=f"/media/{base_filename}_{timestamp}.json",
+                    format_type='json',
+                    base_filename=base_filename,
+                    table_name=table_name,
+                    connection_name=conn.name
                 )
                 files_created.append((username, stored_file))
                 print(f"    ✅ {db_type.upper()} - Table: {table_name} extraction created")

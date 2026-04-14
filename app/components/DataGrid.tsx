@@ -35,7 +35,7 @@ const EditableCell = ({
 
   return (
     <input
-      value={value as string}
+      value={value ?? ''}
       onChange={(e) => setValue(e.target.value)}
       onBlur={onBlur}
       className="w-full bg-transparent border-0 focus:outline-none text-xs sm:text-sm"
@@ -118,16 +118,17 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
       });
       return;
     }
+    const columnNameToAdd = newColumnName.trim();
     const updatedData = data.map(row => ({
       ...row,
-      [newColumnName]: '',
+      [columnNameToAdd]: '',
     })) as TData[];
     setData(updatedData);
     setNewColumnName('');
     setModal({
       isOpen: true,
-      title: 'Column Added',
-      message: `Column "${newColumnName}" has been added successfully.`,
+      title: '✅ Column Added',
+      message: `Column "${columnNameToAdd}" has been added successfully.`,
       type: 'success',
     });
   };
@@ -253,23 +254,49 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                 />
               </th>
-              {columns.map((col: any) => (
-                <th
-                  key={col.accessorKey}
-                  className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider bg-gray-50 relative group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span>{col.header}</span>
-                    <button
-                      onClick={() => handleDeleteColumn(col.accessorKey)}
-                      className="ml-2 opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-xs"
-                      title="Delete column"
+              {/* Render columns from current data structure */}
+              {data.length > 0 &&
+                Object.keys(data[0] as any).map((key) => {
+                  // Find the column header from passed-in columns
+                  const colDef = columns.find((col: any) => col.accessorKey === key);
+                  const header = colDef?.header || key;
+                  return (
+                    <th
+                      key={key}
+                      className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider bg-gray-50 relative group"
                     >
-                      ✕
-                    </button>
-                  </div>
-                </th>
-              ))}
+                      <div className="flex items-center justify-between">
+                        <span>{header}</span>
+                        <button
+                          onClick={() => handleDeleteColumn(key)}
+                          className="ml-2 opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-xs"
+                          title="Delete column"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </th>
+                  );
+                })}
+              {/* Render original columns if no data yet */}
+              {data.length === 0 &&
+                columns.map((col: any) => (
+                  <th
+                    key={col.accessorKey}
+                    className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider bg-gray-50 relative group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{col.header}</span>
+                      <button
+                        onClick={() => handleDeleteColumn(col.accessorKey)}
+                        className="ml-2 opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-xs"
+                        title="Delete column"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </th>
+                ))}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -288,11 +315,27 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                   />
                 </td>
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+                {/* Render all columns from data, not just table visible cells */}
+                {data.length > 0 &&
+                  Object.keys(data[0] as any).map((colKey) => {
+                    const cellValue = (row.original as any)[colKey];
+                    return (
+                      <td key={`${row.id}-${colKey}`} className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                        <input
+                          value={cellValue ?? ''}
+                          onChange={(e) => {
+                            const newRowData = {
+                              ...row.original,
+                              [colKey]: e.target.value,
+                            };
+                            table.options.meta?.updateData(rowIndex, colKey, e.target.value);
+                          }}
+                          onBlur={() => {}}
+                          className="w-full bg-transparent border-0 focus:outline-none text-xs sm:text-sm"
+                        />
+                      </td>
+                    );
+                  })}
               </tr>
             ))}
           </tbody>

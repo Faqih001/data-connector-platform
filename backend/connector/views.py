@@ -55,7 +55,13 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
                 # Store the first batch as a file
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
                 file_ext = 'csv' if format_type == 'csv' else 'json'
-                filename = f"extraction_{connection.name}_{table_name}_{timestamp}.{file_ext}"
+                
+                # Generate base filename: extraction_{db_type}_{table_name}_{username}
+                username = request.user.username if request.user.is_authenticated else 'anonymous'
+                base_filename = f"extraction_{connection.db_type}_{table_name}_{username}"
+                
+                # Full filename with timestamp: extraction_{db_type}_{table_name}_{username}_{timestamp}.json
+                filename = f"{base_filename}_{timestamp}.{file_ext}"
                 filepath = os.path.join(settings.MEDIA_ROOT, filename)
                 
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -80,13 +86,18 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
                     user=user,
                     extracted_data=extracted_data,
                     filepath=filepath,
-                    format_type=format_type
+                    format_type=format_type,
+                    base_filename=base_filename,
+                    table_name=table_name,
+                    connection_name=connection.name
                 )
                 return Response({
                     "data": batch,
                     "extracted_data_id": extracted_data.id,
                     "format": format_type,
-                    "batch_size": batch_size
+                    "batch_size": batch_size,
+                    "base_filename": base_filename,
+                    "timestamp": timestamp
                 }, status=status.HTTP_200_OK)
             
             return Response({"message": "Extraction complete, but no data found."}, status=status.HTTP_200_OK)
@@ -149,9 +160,33 @@ class StoredFileViewSet(viewsets.ModelViewSet):
             return StoredFile.objects.all()
         # Admin users see all files
         if user.is_staff or (hasattr(user, 'role') and user.role == 'admin'):
-            return StoredFile.objects.all()
-        # Regular users see their own files + shared files
-        return (StoredFile.objects.filter(user=user) | StoredFile.objects.filter(shared_with=user)).distinct()
+            queryset = StoredFile.objects.all()
+        else:
+            # Regular users see their own files + shared files
+            queryset = (StoredFile.objects.filter(user=user) | StoredFile.objects.filter(shared_with=user)).distinct()
+        
+        # Apply filtering based on query parameters
+        table_name = self.request.query_params.get('table_name')
+        if table_name:
+            queryset = queryset.filter(table_name=table_name)
+        
+        connection_name = self.request.query_params.get('connection_name')
+        if connection_name:
+            queryset = queryset.filter(connection_name=connection_name)
+        
+        # Date range filtering
+        from_date = self.request.query_params.get('from_date')
+        if from_date:
+            queryset = queryset.filter(extracted_at__gte=from_date)
+        
+        to_date = self.request.query_params.get('to_date')
+        if to_date:
+            queryset = queryset.filter(extracted_at__lte=to_date)
+        
+        # Order by most recent first
+        queryset = queryset.order_by('-extracted_at')
+        
+        return queryset
 
     @method_decorator(csrf_exempt)
     @action(detail=True, methods=['post'])
@@ -464,6 +499,8 @@ def welcome(request):
 
 @api_view(['POST'])
 @csrf_exempt
+@api_view(['POST'])
+@csrf_exempt
 def login_view(request):
     """Login endpoint for session-based authentication"""
     from django.contrib.auth import authenticate, login
@@ -566,6 +603,14 @@ class ExtractedDataViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ExtractedDataSerializer
     permission_classes = [IsAuthenticated]
+
+    def initialize_request(self, request, *args, **kwargs):
+        """Handle CSRF for PATCH requests"""
+        request = super().initialize_request(request, *args, **kwargs)
+        # Disable CSRF checks for PATCH requests as they're API calls
+        if request.method in ['PATCH', 'PUT']:
+            request._dont_enforce_csrf_checks = True
+        return request
 
     def get_queryset(self):
         """

@@ -24,8 +24,12 @@ class StoredFileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = StoredFile
-        fields = ['id', 'user', 'extracted_data', 'filepath', 'format_type', 'shared_with', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at', 'user']
+        fields = [
+            'id', 'user', 'extracted_data', 'filepath', 'format_type', 'shared_with',
+            'base_filename', 'table_name', 'connection_name',
+            'extracted_at', 'last_modified_at'
+        ]
+        read_only_fields = ['extracted_at', 'last_modified_at', 'user']
 
 
 class ExtractedDataSerializer(serializers.ModelSerializer):
