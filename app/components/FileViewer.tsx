@@ -377,14 +377,24 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
   const handleDownload = async (file: StoredFile, format: 'json' | 'csv') => {
     try {
       const fileName = getFileNameFromPath(file.filepath);
-      const fileUrl = `http://localhost:8001/api/files/${file.id}/download/`;
+      const fileUrl = `/api/files/${file.id}/download/`;
       
       const response = await fetch(fileUrl, {
         credentials: 'include'
       });
-      if (!response.ok) throw new Error('Failed to fetch file');
       
-      const jsonData = await response.json();
+      let jsonData: any;
+      
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch file`);
+        } catch (e) {
+          throw new Error(`HTTP ${response.status}: Failed to fetch file`);
+        }
+      }
+      
+      jsonData = await response.json();
       
       let data: string;
       let mimeType: string;
