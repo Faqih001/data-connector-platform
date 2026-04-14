@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const body = await request.json();
-  const res = await fetch(`http://localhost:8001/api/files/${params.id}/submit_data/`, {
+  const res = await fetch(`http://localhost:8001/api/files/${id}/submit_data/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
