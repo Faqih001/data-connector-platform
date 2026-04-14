@@ -287,7 +287,7 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
                     className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider bg-gray-50 relative group"
                   >
                     <div className="flex items-center justify-between">
-                      <span>{col.header}</span>
+                      <span>{typeof col.header === 'function' ? col.accessorKey : (col.header as string)}</span>
                       <button
                         onClick={() => handleDeleteColumn(col.accessorKey)}
                         className="ml-2 opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-xs"

@@ -58,15 +58,61 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
   const [searchLoading, setSearchLoading] = useState(false);
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
+  const [filterTableName, setFilterTableName] = useState('');
+  const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
 
   // Update visible files when input files change
   useEffect(() => {
-    setVisibleFiles(files);
+    let filtered = files;
+    
+    // Filter by date range
+    if (filterFromDate) {
+      const fromDate = new Date(filterFromDate).getTime();
+      filtered = filtered.filter(f => {
+        if (!f.extracted_at) return true;
+        return new Date(f.extracted_at).getTime() >= fromDate;
+      });
+    }
+    
+    if (filterToDate) {
+      const toDate = new Date(filterToDate).getTime();
+      filtered = filtered.filter(f => {
+        if (!f.extracted_at) return true;
+        return new Date(f.extracted_at).getTime() <= toDate;
+      });
+    }
+    
+    // Filter by table name
+    if (filterTableName) {
+      filtered = filtered.filter(f => 
+        f.table_name?.toLowerCase().includes(filterTableName.toLowerCase()) ||
+        f.base_filename?.toLowerCase().includes(filterTableName.toLowerCase())
+      );
+    }
+    
+    // Sort by last modified or extracted date
+    filtered = filtered.sort((a, b) => {
+      const dateA = a.last_modified_at || a.extracted_at || '';
+      const dateB = b.last_modified_at || b.extracted_at || '';
+      
+      const timeA = new Date(dateA).getTime();
+      const timeB = new Date(dateB).getTime();
+      
+      if (sortOrder === 'latest') {
+        return timeB - timeA; // Latest first
+      } else {
+        return timeA - timeB; // Oldest first
+      }
+    });
+    
+    setVisibleFiles(filtered);
     // Fetch access levels for all files
-    files.forEach(file => {
+    filtered.forEach(file => {
       fetchFileAccess(file.id);
     });
-  }, [files]);
+  }, [files, filterFromDate, filterToDate, filterTableName, sortOrder]);
 
   // Clean up expired deleted files (5 minute window)
   useEffect(() => {
@@ -98,6 +144,24 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
 
   const getFileNameFromPath = (filepath: string) => {
     return filepath.split('/').pop() || 'file';
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', { 
+        year: 'numeric',
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   const getAccessBadge = (file: StoredFile) => {
@@ -355,6 +419,67 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
     <div className="p-4 border rounded-lg bg-white shadow-sm">
       <h2 className="text-base sm:text-lg font-bold mb-3">Stored Files</h2>
       
+      {/* Date and Filter Controls */}
+      <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">From Date</label>
+            <input
+              type="date"
+              value={filterFromDate}
+              onChange={(e) => setFilterFromDate(e.target.value)}
+              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">To Date</label>
+            <input
+              type="date"
+              value={filterToDate}
+              onChange={(e) => setFilterToDate(e.target.value)}
+              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Table Name</label>
+            <input
+              type="text"
+              value={filterTableName}
+              onChange={(e) => setFilterTableName(e.target.value)}
+              placeholder="Search table name..."
+              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Sort By</label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'latest' | 'oldest')}
+              className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="latest">📅 Latest First</option>
+              <option value="oldest">📅 Oldest First</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={() => {
+                setFilterFromDate('');
+                setFilterToDate('');
+                setFilterTableName('');
+                setSortOrder('latest');
+              }}
+              className="w-full px-2 py-1 bg-gray-400 text-white rounded text-xs hover:bg-gray-500"
+            >
+              Clear All
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-gray-600">
+          📊 Showing {visibleFiles.length} of {files.length} files (sorted: {sortOrder === 'latest' ? 'Latest First ⬆️' : 'Oldest First ⬇️'})
+        </p>
+      </div>
+      
       {visibleFiles.length === 0 && deletedFiles.length === 0 ? (
         <p className="text-gray-500 text-sm">No files yet</p>
       ) : (
@@ -418,6 +543,18 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
                           </div>
                           {file.user && (
                             <p className="text-xs text-gray-500">👤 {file.user.username || 'Unknown'}</p>
+                          )}
+                          {/* Display extraction and modification dates */}
+                          <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                            {file.extracted_at && (
+                              <p>📅 Extracted: <span className="font-medium">{formatDate(file.extracted_at)}</span></p>
+                            )}
+                            {file.last_modified_at && file.last_modified_at !== file.extracted_at && (
+                              <p>✏️ Modified: <span className="font-medium">{formatDate(file.last_modified_at)}</span></p>
+                            )}
+                          </div>
+                          {file.table_name && (
+                            <p className="text-xs text-gray-500 mt-1">📋 Table: <span className="font-medium">{file.table_name}</span></p>
                           )}
                           {file.shared_with && file.shared_with.length > 0 && (
                             <div className="text-xs text-green-600 mt-1">

@@ -23,8 +23,13 @@ export interface StoredFile {
     format_type?: string; // 'json' or 'csv'
     user?: User | null;
     shared_with?: User[];
-    created_at?: string;
-    updated_at?: string;
+    base_filename?: string; // Base filename without timestamp
+    table_name?: string; // Original table name
+    connection_name?: string; // Database connection name
+    extracted_at?: string; // Date when data was extracted
+    last_modified_at?: string; // Date when data was last updated
+    created_at?: string; // Deprecated
+    updated_at?: string; // Deprecated
 }
 
 export interface ExtractedData {

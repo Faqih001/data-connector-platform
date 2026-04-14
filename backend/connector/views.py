@@ -497,10 +497,8 @@ def welcome(request):
     return render(request, 'welcome.html', context)
 
 
-@api_view(['POST'])
 @csrf_exempt
 @api_view(['POST'])
-@csrf_exempt
 def login_view(request):
     """Login endpoint for session-based authentication"""
     from django.contrib.auth import authenticate, login
@@ -670,6 +668,7 @@ class ExtractedDataViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         """
         Allow updating the 'data' field of an ExtractedData instance.
+        Also updates the associated StoredFile's last_modified_at timestamp.
         """
         try:
             instance = self.get_object()
@@ -690,6 +689,14 @@ class ExtractedDataViewSet(viewsets.ModelViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             serializer.save()
+            
+            # Update the associated StoredFile's last_modified_at timestamp
+            try:
+                stored_file = StoredFile.objects.get(extracted_data=instance)
+                stored_file.save()  # This will update the last_modified_at via auto_now
+            except StoredFile.DoesNotExist:
+                pass  # No associated file, that's okay
+            
             return Response({
                 "success": True,
                 "message": "Data updated successfully",
