@@ -223,12 +223,15 @@ class StoredFileViewSet(viewsets.ModelViewSet):
                 )
             
             file.shared_with.add(*users)
-            shared_users = [{"id": u.id, "username": u.username} for u in users]
+            
+            # Return updated file with all shared_with users
+            from .serializers import StoredFileSerializer
+            updated_file = StoredFile.objects.get(id=file.id)
+            serializer = StoredFileSerializer(updated_file)
             
             return Response({
                 "message": "✅ File shared successfully",
-                "shared_with": shared_users,
-                "file_id": file.id
+                "file": serializer.data
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(

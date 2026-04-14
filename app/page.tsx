@@ -54,22 +54,23 @@ export default function Home() {
   }, []);
 
   // Load user data when logged in
-  useEffect(() => {
-    async function loadInitialData() {
-      try {
-        setIsLoading(true);
-        const [fetchedConnections, fetchedFiles] = await Promise.all([
-          getConnections(),
-          getFiles(),
-        ]);
-        setConnections(fetchedConnections);
-        setFiles(fetchedFiles);
-      } catch (err) {
-        setError("Failed to load initial data.");
-      } finally {
-        setIsLoading(false);
-      }
+  const loadInitialData = async () => {
+    try {
+      setIsLoading(true);
+      const [fetchedConnections, fetchedFiles] = await Promise.all([
+        getConnections(),
+        getFiles(),
+      ]);
+      setConnections(fetchedConnections);
+      setFiles(fetchedFiles);
+    } catch (err) {
+      setError("Failed to load initial data.");
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
     if (isLoggedIn) {
       loadInitialData();
     }
@@ -336,7 +337,7 @@ export default function Home() {
             </select>
           </div>
 
-          <FileViewer files={files} onFileSelect={setSelectedFile} />
+          <FileViewer files={files} onFileSelect={setSelectedFile} onRefresh={loadInitialData} />
         </div>
 
         <div className="lg:col-span-2 space-y-4 lg:max-h-screen lg:overflow-y-auto pl-2">

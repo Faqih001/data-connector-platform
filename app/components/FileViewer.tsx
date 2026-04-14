@@ -8,6 +8,7 @@ interface FileViewerProps {
   files: StoredFile[];
   onFileSelect?: (file: StoredFile | null) => void;
   currentUser?: User;
+  onRefresh?: () => void;
 }
 
 interface DeletedFile {
@@ -42,7 +43,7 @@ function jsonToCsv(jsonData: any[]): string {
   return [csvHeaders, ...csvRows].join('\n');
 }
 
-export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps) {
+export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: FileViewerProps) {
   const [expandedFileId, setExpandedFileId] = useState<number | null>(null);
   const [downloadFormat, setDownloadFormat] = useState<'json' | 'csv'>('json');
   const [selectedFiles, setSelectedFiles] = useState<Set<number>>(new Set());
@@ -232,8 +233,9 @@ export function FileViewer({ files, onFileSelect, currentUser }: FileViewerProps
         setSearchResults([]);
         setSelectedUsers(new Set());
         setShareEmail('');
-        if (shareModal.fileId) {
-          fetchFileAccess(shareModal.fileId);
+        // Refresh file list to show updated shared_with data
+        if (onRefresh) {
+          onRefresh();
         }
       } else {
         alert('Failed to share file');

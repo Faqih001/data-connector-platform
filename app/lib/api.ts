@@ -75,3 +75,28 @@ export async function submitData(fileId: number, data: any[]): Promise<void> {
         throw new Error('Failed to submit data');
     }
 }
+
+export async function shareFile(fileId: number, userIds: number[]): Promise<any> {
+    const response = await fetch(`${API_URL}/files/${fileId}/share/`, {
+        ...fetchOptions,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_ids: userIds }),
+    });
+    if (!response.ok) {
+        throw new Error('Failed to share file');
+    }
+    return response.json();
+}
+
+export async function deleteFile(fileId: number): Promise<void> {
+    const response = await fetch(`${API_URL}/files/${fileId}/`, {
+        ...fetchOptions,
+        method: 'DELETE',
+    });
+    if (!response.ok) {
+        throw new Error('Failed to delete file');
+    }
+}
