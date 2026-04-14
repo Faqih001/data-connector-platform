@@ -110,27 +110,61 @@ export async function getTables(connectionId: number): Promise<string[]> {
 }
 
 export async function getExtractedDataByTable(connectionId: number, tableName: string): Promise<any> {
-    const response = await fetch(
-        `${API_URL}/extracted_data/by_table/?connection_id=${connectionId}&table_name=${tableName}`,
-        fetchOptions
-    );
-    if (!response.ok) {
-        throw new Error('Failed to fetch extracted data');
+    const url = `${API_URL}/extracted_data/by_table/?connection_id=${connectionId}&table_name=${tableName}`;
+    console.log('📨 Fetching data:', { url });
+    
+    try {
+        const response = await fetch(url, fetchOptions);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: Failed to fetch extracted data`);
+        }
+        
+        const responseData = await response.json();
+        console.log('✅ Data fetched successfully:', {
+            id: responseData.id,
+            dataLength: Array.isArray(responseData.data) ? responseData.data.length : 0,
+        });
+        
+        return responseData;
+    } catch (error) {
+        console.error('❌ Fetch failed:', error);
+        throw error;
     }
-    return response.json();
 }
 
 export async function updateExtractedData(id: number, data: any): Promise<any> {
-    const response = await fetch(`${API_URL}/extracted_data/${id}/`, {
-        ...fetchOptions,
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ data }),
+    console.log('📤 Sending PATCH request to update extracted data:', {
+        endpoint: `${API_URL}/extracted_data/${id}/`,
+        payload: { data }
     });
-    if (!response.ok) {
-        throw new Error('Failed to update extracted data');
+    
+    try {
+        const response = await fetch(`${API_URL}/extracted_data/${id}/`, {
+            ...fetchOptions,
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ data }),
+        });
+        
+        const responseData = await response.json();
+        console.log('📥 Response from PATCH:', {
+            status: response.status,
+            ok: response.ok,
+            data: responseData
+        });
+
+        if (!response.ok) {
+            const errorMsg = responseData.error || responseData.details || 'Failed to update extracted data';
+            throw new Error(`${response.status}: ${errorMsg}`);
+        }
+        
+        console.log('✅ Update successful');
+        return responseData;
+    } catch (error) {
+        console.error('❌ Update failed:', error);
+        throw error;
     }
-    return response.json();
 }
