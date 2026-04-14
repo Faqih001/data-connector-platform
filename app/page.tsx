@@ -314,6 +314,28 @@ export default function Home() {
           </button>
         </div>
 
+        {/* Quick Action Buttons */}
+        <div className="mb-6 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <a
+              href="http://localhost:8001/api/files/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-medium py-2 px-4 rounded-lg transition text-center text-sm"
+            >
+              📊 API Files
+            </a>
+            <a
+              href="http://localhost:8001/admin/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 bg-gradient-to-r from-purple-400 to-purple-600 hover:from-purple-500 hover:to-purple-700 text-white font-medium py-2 px-4 rounded-lg transition text-center text-sm"
+            >
+              📊 Admin Panel
+            </a>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
           {/* Left Sidebar - Increased to 2/4 width on desktop */}
           <div className="lg:col-span-2 space-y-4 lg:max-h-screen lg:overflow-y-auto pr-2">

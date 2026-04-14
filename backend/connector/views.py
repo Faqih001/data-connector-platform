@@ -85,6 +85,14 @@ class StoredFileViewSet(viewsets.ModelViewSet):
     queryset = StoredFile.objects.all()
     serializer_class = StoredFileSerializer
 
+    def initialize_request(self, request, *args, **kwargs):
+        """Bypass CSRF checks for this ViewSet by setting the _dont_enforce_csrf_checks flag"""
+        request = super().initialize_request(request, *args, **kwargs)
+        # Disable CSRF checks for POST requests to share/unshare/submit_data actions
+        if request.method == 'POST' and request.path_info.endswith(('/share/', '/unshare/', '/submit_data/')):
+            request._dont_enforce_csrf_checks = True
+        return request
+
     def get_queryset(self):
         user = self.request.user
         # For unauthenticated users or development, return all files
@@ -96,6 +104,7 @@ class StoredFileViewSet(viewsets.ModelViewSet):
         # Regular users see their own files + shared files
         return (StoredFile.objects.filter(user=user) | StoredFile.objects.filter(shared_with=user)).distinct()
 
+    @method_decorator(csrf_exempt)
     @action(detail=True, methods=['post'])
     def submit_data(self, request, pk=None):
         """Submit modified data with DRF validation and model updates"""
@@ -186,6 +195,7 @@ class StoredFileViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @method_decorator(csrf_exempt)
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
         """Share file with other users"""
@@ -197,8 +207,8 @@ class StoredFileViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Only owner or admin can share
-        is_owner = file.user == request.user
+        # Only owner or admin can share - compare user IDs instead of object references
+        is_owner = file.user_id == request.user.id if file.user and request.user else False
         is_admin = request.user.is_staff or (hasattr(request.user, 'role') and request.user.role == 'admin')
         
         if not (is_owner or is_admin):
@@ -239,18 +249,33 @@ class StoredFileViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @method_decorator(csrf_exempt)
     @action(detail=True, methods=['post'])
     def unshare(self, request, pk=None):
         """Revoke file sharing with specific users"""
-        file = self.get_object()
+        # Check authentication
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "❌ You must be logged in to unshare files"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        try:
+            file = self.get_object()
+        except Exception as e:
+            return Response(
+                {"error": f"File not found: {str(e)}"},
+                status=status.HTTP_404_NOT_FOUND
+            )
         
         # Only owner or admin can unshare
-        is_owner = file.user == request.user
+        is_owner = (file.user_id is not None and request.user.id is not None and 
+                   file.user_id == request.user.id)
         is_admin = request.user.is_staff or (hasattr(request.user, 'role') and request.user.role == 'admin')
         
         if not (is_owner or is_admin):
             return Response(
-                {"error": "❌ Permission denied. Only the file owner can modify sharing."},
+                {"error": f"❌ Permission denied. You are not the owner of this file. Owner: {file.user_id}, You: {request.user.id}"},
                 status=status.HTTP_403_FORBIDDEN
             )
         

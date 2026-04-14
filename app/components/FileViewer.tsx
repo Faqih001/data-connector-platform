@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { StoredFile, User } from '@/app/types';
 import { API_URL } from '@/app/lib/api';
+import { useToast } from './ToastContext';
 
 interface FileViewerProps {
   files: StoredFile[];
@@ -44,6 +45,7 @@ function jsonToCsv(jsonData: any[]): string {
 }
 
 export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: FileViewerProps) {
+  const toast = useToast();
   const [expandedFileId, setExpandedFileId] = useState<number | null>(null);
   const [downloadFormat, setDownloadFormat] = useState<'json' | 'csv'>('json');
   const [selectedFiles, setSelectedFiles] = useState<Set<number>>(new Set());
@@ -227,7 +229,7 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
 
   const handleShare = async () => {
     if (!shareModal.fileId || selectedUsers.size === 0) {
-      alert('Please select at least one user to share with');
+      toast.warning('Please select at least one user to share with');
       return;
     }
 
@@ -247,7 +249,7 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
       });
 
       if (response.ok) {
-        alert('✅ File shared successfully!');
+        toast.success('File shared successfully!');
         setShareModal({ open: false, fileId: null });
         setSearchResults([]);
         setSelectedUsers(new Set());
@@ -258,10 +260,10 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
         }
       } else {
         const errorData = await response.json();
-        alert('Failed to share file: ' + (errorData.error || 'Unknown error'));
+        toast.error('Failed to share file: ' + (errorData.error || 'Unknown error'));
       }
     } catch (error) {
-      alert('Failed to share file: ' + error);
+      toast.error('Failed to share file: ' + error);
     } finally {
       setLoadingShare(false);
     }
@@ -287,17 +289,17 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
       });
 
       if (response.ok) {
-        alert('✅ User removed from shared access!');
+        toast.success('User removed from shared access!');
         // Refresh file list
         if (onRefresh) {
           onRefresh();
         }
       } else {
         const errorData = await response.json();
-        alert('Failed to remove user: ' + (errorData.error || 'Unknown error'));
+        toast.error('Failed to remove user: ' + (errorData.error || 'Unknown error'));
       }
     } catch (error) {
-      alert('Failed to remove user: ' + error);
+      toast.error('Failed to remove user: ' + error);
     }
   };
 
@@ -345,7 +347,7 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download failed:', err);
-      alert(`Failed to download file: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error(`Failed to download file: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
