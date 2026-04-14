@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Files Endpoint Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .endpoint {
+            background: #f5f5f5;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Courier New', monospace;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .button-group button {
+            width: 100%;
+        }
+
+        .button-danger {
+            background: #e74c3c;
+        }
+
+        .button-danger:hover {
+            background: #c0392b;
+        }
+
+        .button-success {
+            background: #27ae60;
+        }
+
+        .button-success:hover {
+            background: #229954;
+        }
+
+        .response {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .response pre {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .response.error {
+            border-left-color: #e74c3c;
+            background: #fadbd8;
+        }
+
+        .response.success {
+            border-left-color: #27ae60;
+            background: #d5f4e6;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: #667eea;
+            font-style: italic;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .method-get {
+            background: #3498db;
+            color: white;
+        }
+
+        .method-post {
+            background: #27ae60;
+            color: white;
+        }
+
+        .method-patch {
+            background: #f39c12;
+            color: white;
+        }
+
+        .method-delete {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: #999;
+            font-weight: bold;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .data-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .data-item {
+            background: #f5f5f5;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+        }
+
+        .data-item small {
+            color: #999;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .copy-btn {
+            padding: 5px 10px;
+            font-size: 12px;
+            background: #95a5a6;
+            width: auto;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔌 API Files Endpoint Tester</h1>
+            <p>Test all CRUD operations for the /api/files/ endpoint</p>
+            <div class="endpoint">Base URL: http://localhost:8001/api/files/</div>
+        </div>
+
+        <div class="grid">
+            <!-- GET ALL FILES -->
+            <div class="card">
+                <h2><span class="method-badge method-get">GET</span>List All Files</h2>
+                <button onclick="testGetAllFiles()">Fetch All Files</button>
+                <div class="loading" id="loading-get">
+                    <span class="spinner">⏳</span> Loading...
+                </div>
+                <div class="response" id="response-get"></div>
+            </div>
+
+            <!-- GET SPECIFIC FILE -->
+            <div class="card">
+                <h2><span class="method-badge method-get">GET</span>Get Single File</h2>
+                <div class="form-group">
+                    <label>File ID</label>
+                    <input type="number" id="get-file-id" placeholder="Enter file ID" value="1">
+                </div>
+                <button onclick="testGetFile()">Get File Details</button>
+                <div class="loading" id="loading-get-single">
+                    <span class="spinner">⏳</span> Loading...
+                </div>
+                <div class="response" id="response-get-single"></div>
+            </div>
+
+            <!-- CREATE FILE -->
+            <div class="card">
+                <h2><span class="method-badge method-post">POST</span>Create New File</h2>
+                <div class="form-group">
+                    <label>File Data (JSON)</label>
+                    <textarea id="post-data" placeholder='{"user": 1, "filepath": "/path/to/file", "format_type": "json"}'>{
+  "user": 1,
+  "filepath": "/path/to/file.json",
+  "format_type": "json"
+}</textarea>
+                </div>
+                <button onclick="testCreateFile()">Create File</button>
+                <div class="loading" id="loading-post">
+                    <span class="spinner">⏳</span> Loading...
+                </div>
+                <div class="response" id="response-post"></div>
+            </div>
+
+            <!-- UPDATE FILE -->
+            <div class="card">
+                <h2><span class="method-badge method-patch">PATCH</span>Update File</h2>
+                <div class="form-group">
+                    <label>File ID</label>
+                    <input type="number" id="patch-file-id" placeholder="Enter file ID" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Update Data (JSON)</label>
+                    <textarea id="patch-data" placeholder='{"filepath": "/new/path"}'>{
+  "filepath": "/updated/path.json",
+  "format_type": "csv"
+}</textarea>
+                </div>
+                <button onclick="testUpdateFile()">Update File</button>
+                <div class="loading" id="loading-patch">
+                    <span class="spinner">⏳</span> Loading...
+                </div>
+                <div class="response" id="response-patch"></div>
+            </div>
+
+            <!-- DELETE FILE -->
+            <div class="card">
+                <h2><span class="method-badge method-delete">DELETE</span>Delete File</h2>
+                <div class="form-group">
+                    <label>File ID</label>
+                    <input type="number" id="delete-file-id" placeholder="Enter file ID" value="1">
+                </div>
+                <button class="button-danger" onclick="testDeleteFile()">Delete File</button>
+                <div class="loading" id="loading-delete">
+                    <span class="spinner">⏳</span> Loading...
+                </div>
+                <div class="response" id="response-delete"></div>
+            </div>
+
+            <!-- SUBMIT DATA -->
+            <div class="card">
+                <h2><span class="method-badge method-post">POST</span>Submit Data</h2>
+                <div class="form-group">
+                    <label>File ID</label>
+                    <input type="number" id="submit-file-id" placeholder="Enter file ID" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Data to Submit (JSON Array)</label>
+                    <textarea id="submit-data" placeholder='[{"field1": "value1"}, {"field1": "value2"}]'>[
+  {"id": 1, "name": "John Doe", "email": "john@example.com"},
+  {"id": 2, "name": "Jane Smith", "email": "jane@example.com"}
+]</textarea>
+                </div>
+                <button class="button-success" onclick="testSubmitData()">Submit Data</button>
+                <div class="loading" id="loading-submit">
+                    <span class="spinner">⏳</span> Loading...
+                </div>
+                <div class="response" id="response-submit"></div>
+            </div>
+
+            <!-- RAW REQUEST BUILDER -->
+            <div class="card full-width">
+                <h2>🔧 Custom Request Builder</h2>
+                <div class="form-group">
+                    <label>Method</label>
+                    <select id="custom-method">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Endpoint Path (relative to base URL)</label>
+                    <input type="text" id="custom-path" placeholder="/" value="/">
+                </div>
+                <div class="form-group">
+                    <label>Request Body (JSON, optional)</label>
+                    <textarea id="custom-body" placeholder='{}'></textarea>
+                </div>
+                <button onclick="testCustomRequest()">Send Custom Request</button>
+                <div class="loading" id="loading-custom">
+                    <span class="spinner">⏳</span> Loading...
+                </div>
+                <div class="response" id="response-custom"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:8001/api/files';
+
+        async function fetchData(method, path, data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(`${BASE_URL}${path}`, options);
+                const responseData = response.status === 204 ? { success: true } : await response.json();
+
+                return {
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: responseData,
+                    headers: Object.fromEntries(response.headers),
+                };
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        function displayResponse(elementId, response, isError = false) {
+            const element = document.getElementById(elementId);
+            const className = isError ? 'error' : 'success';
+            
+            let html = `<pre><strong>Status: ${response.status} ${response.statusText}</strong>\n\n`;
+            html += `<strong>Response Data:</strong>\n`;
+            html += JSON.stringify(response.data, null, 2);
+            html += `\n\n<strong>Headers:</strong>\n`;
+            html += JSON.stringify(response.headers, null, 2);
+            html += '</pre>';
+
+            element.innerHTML = html;
+            element.className = `response ${className}`;
+        }
+
+        function showLoading(elementId) {
+            document.getElementById(elementId).classList.add('active');
+        }
+
+        function hideLoading(elementId) {
+            document.getElementById(elementId).classList.remove('active');
+        }
+
+        // Test Functions
+        async function testGetAllFiles() {
+            showLoading('loading-get');
+            try {
+                const response = await fetchData('GET', '/');
+                displayResponse('response-get', response);
+            } catch (error) {
+                document.getElementById('response-get').innerHTML = `<pre><strong style="color: red;">Error:</strong> ${error.message}</pre>`;
+                document.getElementById('response-get').className = 'response error';
+            } finally {
+                hideLoading('loading-get');
+            }
+        }
+
+        async function testGetFile() {
+            const fileId = document.getElementById('get-file-id').value;
+            if (!fileId) {
+                alert('Please enter a File ID');
+                return;
+            }
+            showLoading('loading-get-single');
+            try {
+                const response = await fetchData('GET', `/${fileId}/`);
+                displayResponse('response-get-single', response);
+            } catch (error) {
+                document.getElementById('response-get-single').innerHTML = `<pre><strong style="color: red;">Error:</strong> ${error.message}</pre>`;
+                document.getElementById('response-get-single').className = 'response error';
+            } finally {
+                hideLoading('loading-get-single');
+            }
+        }
+
+        async function testCreateFile() {
+            const data = document.getElementById('post-data').value;
+            try {
+                const parsedData = JSON.parse(data);
+                showLoading('loading-post');
+                const response = await fetchData('POST', '/', parsedData);
+                displayResponse('response-post', response);
+            } catch (error) {
+                alert('Invalid JSON in request body');
+                document.getElementById('response-post').innerHTML = `<pre><strong style="color: red;">Error:</strong> ${error.message}</pre>`;
+                document.getElementById('response-post').className = 'response error';
+                hideLoading('loading-post');
+            }
+        }
+
+        async function testUpdateFile() {
+            const fileId = document.getElementById('patch-file-id').value;
+            const data = document.getElementById('patch-data').value;
+            if (!fileId) {
+                alert('Please enter a File ID');
+                return;
+            }
+            try {
+                const parsedData = JSON.parse(data);
+                showLoading('loading-patch');
+                const response = await fetchData('PATCH', `/${fileId}/`, parsedData);
+                displayResponse('response-patch', response);
+            } catch (error) {
+                alert('Invalid JSON in request body');
+                document.getElementById('response-patch').innerHTML = `<pre><strong style="color: red;">Error:</strong> ${error.message}</pre>`;
+                document.getElementById('response-patch').className = 'response error';
+                hideLoading('loading-patch');
+            }
+        }
+
+        async function testDeleteFile() {
+            const fileId = document.getElementById('delete-file-id').value;
+            if (!fileId) {
+                alert('Please enter a File ID');
+                return;
+            }
+            if (!confirm('Are you sure you want to delete this file?')) {
+                return;
+            }
+            showLoading('loading-delete');
+            try {
+                const response = await fetchData('DELETE', `/${fileId}/`);
+                displayResponse('response-delete', response);
+            } catch (error) {
+                document.getElementById('response-delete').innerHTML = `<pre><strong style="color: red;">Error:</strong> ${error.message}</pre>`;
+                document.getElementById('response-delete').className = 'response error';
+            } finally {
+                hideLoading('loading-delete');
+            }
+        }
+
+        async function testSubmitData() {
+            const fileId = document.getElementById('submit-file-id').value;
+            const data = document.getElementById('submit-data').value;
+            if (!fileId) {
+                alert('Please enter a File ID');
+                return;
+            }
+            try {
+                const parsedData = JSON.parse(data);
+                showLoading('loading-submit');
+                const response = await fetchData('POST', `/${fileId}/submit_data/`, { data: parsedData });
+                displayResponse('response-submit', response);
+            } catch (error) {
+                alert('Invalid JSON in request body');
+                document.getElementById('response-submit').innerHTML = `<pre><strong style="color: red;">Error:</strong> ${error.message}</pre>`;
+                document.getElementById('response-submit').className = 'response error';
+                hideLoading('loading-submit');
+            }
+        }
+
+        async function testCustomRequest() {
+            const method = document.getElementById('custom-method').value;
+            const path = document.getElementById('custom-path').value;
+            const bodyText = document.getElementById('custom-body').value;
+            
+            try {
+                let data = null;
+                if (bodyText.trim()) {
+                    data = JSON.parse(bodyText);
+                }
+                showLoading('loading-custom');
+                const response = await fetchData(method, path, data);
+                displayResponse('response-custom', response);
+            } catch (error) {
+                if (error.message.includes('Unexpected token')) {
+                    alert('Invalid JSON in request body');
+                }
+                document.getElementById('response-custom').innerHTML = `<pre><strong style="color: red;">Error:</strong> ${error.message}</pre>`;
+                document.getElementById('response-custom').className = 'response error';
+                hideLoading('loading-custom');
+            }
+        }
+    </script>
+</body>
+</html>

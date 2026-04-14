@@ -91,11 +91,20 @@ export default function Home() {
     setLoginError("");
     
     try {
+      // Step 1: Get CSRF token
+      const csrfResponse = await fetch(`${API_URL}/csrf-token/`, {
+        credentials: 'include'
+      });
+      const csrfData = await csrfResponse.json();
+      const csrfToken = csrfData.csrfToken;
+      
+      // Step 2: Login with CSRF token
       const response = await fetch(`${API_URL}/login/`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
         },
         body: JSON.stringify({
           username: loginUsername,
@@ -109,11 +118,13 @@ export default function Home() {
         setIsLoggedIn(true);
         setLoginUsername("");
         setLoginPassword("");
+        setLoginError("");
       } else {
-        setLoginError("❌ Invalid username or password");
+        const errorData = await response.json();
+        setLoginError(errorData.error || "❌ Invalid username or password");
       }
     } catch (err) {
-      setLoginError("Failed to login: " + err);
+      setLoginError("Failed to login: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsLoggingIn(false);
     }
@@ -121,15 +132,26 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
+      // Get CSRF token for logout
+      const csrfResponse = await fetch(`${API_URL}/csrf-token/`, {
+        credentials: 'include'
+      });
+      const csrfData = await csrfResponse.json();
+      const csrfToken = csrfData.csrfToken;
+      
       await fetch(`${API_URL}/logout/`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': csrfToken,
+        }
       });
       setIsLoggedIn(false);
       setCurrentUser(null);
       setConnections([]);
       setFiles([]);
       setData([]);
+      setLoginError("");
     } catch (err) {
       console.error('Logout failed:', err);
     }

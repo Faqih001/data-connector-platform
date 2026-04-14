@@ -82,8 +82,8 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class StoredFileViewSet(viewsets.ModelViewSet):
+    queryset = StoredFile.objects.all()
     serializer_class = StoredFileSerializer
-    permission_classes = [IsAuthenticated, IsFileOwnerOrAdmin]
 
     def get_queryset(self):
         user = self.request.user
@@ -385,6 +385,8 @@ def welcome(request):
     return render(request, 'welcome.html', context)
 
 
+@api_view(['POST'])
+@csrf_exempt
 def login_view(request):
     """Login endpoint for session-based authentication"""
     from django.contrib.auth import authenticate, login
@@ -416,13 +418,8 @@ def login_view(request):
         )
 
 
-@csrf_exempt
 @api_view(['POST'])
-def login_view(request):
-
-
 @csrf_exempt
-@api_view(['POST'])
 def logout_view(request):
     """Logout endpoint"""
     from django.contrib.auth import logout
@@ -434,8 +431,8 @@ def logout_view(request):
     )
 
 
-@csrf_exempt
 @api_view(['GET'])
+@csrf_exempt
 def csrf_token_view(request):
     """Get CSRF token for login"""
     from django.middleware.csrf import get_token
