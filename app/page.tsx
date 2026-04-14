@@ -416,13 +416,13 @@ export default function Home() {
                 <label htmlFor="tableName" className="block text-sm font-medium text-gray-700">
                   Table Name
                 </label>
-                <select
-                  id="tableName"
-                  value={tableName}
-                  onChange={(e) => setTableName(e.target.value)}
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  disabled={!selectedConnection || availableTables.length === 0}
-                >
+                  <select
+                    id="tableName"
+                    value={tableName}
+                    onChange={(e) => setTableName(e.target.value)}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    disabled={!selectedConnection || availableTables.length === 0}
+                  >
                   <option value="">{availableTables.length > 0 ? 'Select a table' : 'No tables found'}</option>
                   {availableTables.map((table) => (
                     <option key={table} value={table}>
