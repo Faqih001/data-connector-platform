@@ -94,7 +94,7 @@ class StoredFileViewSet(viewsets.ModelViewSet):
         if user.is_staff or (hasattr(user, 'role') and user.role == 'admin'):
             return StoredFile.objects.all()
         # Regular users see their own files + shared files
-        return StoredFile.objects.filter(user=user) | StoredFile.objects.filter(shared_with=user).distinct()
+        return (StoredFile.objects.filter(user=user) | StoredFile.objects.filter(shared_with=user)).distinct()
 
     @action(detail=True, methods=['post'])
     def submit_data(self, request, pk=None):
