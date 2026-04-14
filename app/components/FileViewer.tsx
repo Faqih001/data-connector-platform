@@ -377,7 +377,7 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
   const handleDownload = async (file: StoredFile, format: 'json' | 'csv') => {
     try {
       const fileName = getFileNameFromPath(file.filepath);
-      const fileUrl = `/api/files/${file.id}/download/`;
+      const fileUrl = `${API_URL}/files/${file.id}/download/`;
       
       const response = await fetch(fileUrl, {
         credentials: 'include'
