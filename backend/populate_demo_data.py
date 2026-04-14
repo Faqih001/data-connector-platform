@@ -50,208 +50,163 @@ for user_data in demo_users:
     print(f"  {status}: {user.username} ({user.email})")
 
 # ============================================================================
-# STEP 2: CREATE DEMO DATABASE CONNECTIONS
+# STEP 2: CREATE DEMO DATABASE CONNECTIONS (Per User - All 4 Database Types)
 # ============================================================================
-print("\n📡 STEP 2: Creating Demo Database Connections...")
+print("\n📡 STEP 2: Creating Demo Database Connections for Each User...")
 print("-" * 80)
 
-demo_connections = [
-    # PostgreSQL - Sales Database
-    {
-        'name': 'PostgreSQL Sales DB',
+# Define connection templates for each database type
+connection_templates = {
+    'postgresql': {
         'db_type': 'postgresql',
         'host': 'localhost',
         'port': 5432,
-        'username': 'sales_user',
-        'password': 'sales_pass_123',
-        'database_name': 'sales_database',
+        'database_name': 'test_db',
     },
-    {
-        'name': 'PostgreSQL Users Database',
-        'db_type': 'postgresql',
-        'host': '192.168.1.100',
-        'port': 5432,
-        'username': 'postgres_admin',
-        'password': 'postgres_secure_456',
-        'database_name': 'users_db',
-    },
-    {
-        'name': 'PostgreSQL Analytics',
-        'db_type': 'postgresql',
-        'host': 'analytics.company.com',
-        'port': 5432,
-        'username': 'analytics_read',
-        'password': 'analytics_readonly_789',
-        'database_name': 'analytics_prod',
-    },
-    # MySQL - Customer Database
-    {
-        'name': 'MySQL Customer DB',
+    'mysql': {
         'db_type': 'mysql',
-        'host': 'mysql.company.local',
+        'host': 'localhost',
         'port': 3306,
-        'username': 'customer_user',
-        'password': 'customer_pass_123',
-        'database_name': 'customers',
+        'database_name': 'test_database',
     },
-    {
-        'name': 'MySQL Inventory System',
-        'db_type': 'mysql',
-        'host': 'inventory.prod.local',
-        'port': 3306,
-        'username': 'inventory_app',
-        'password': 'inv_app_456',
-        'database_name': 'inventory_db',
-    },
-    {
-        'name': 'MySQL Financial Data',
-        'db_type': 'mysql',
-        'host': 'finance-server.internal',
-        'port': 3306,
-        'username': 'finance_read',
-        'password': 'fin_secure_789',
-        'database_name': 'financial_records',
-    },
-    # MongoDB - Event Logs
-    {
-        'name': 'MongoDB Event Logs',
+    'mongodb': {
         'db_type': 'mongodb',
-        'host': 'mongodb.cluster.io',
+        'host': 'localhost',
         'port': 27017,
-        'username': 'mongo_user',
-        'password': 'mongo_pass_123',
-        'database_name': 'eventlogs',
+        'database_name': 'test_mongodb',
     },
-    {
-        'name': 'MongoDB User Activity',
-        'db_type': 'mongodb',
-        'host': 'auth-mongo.internal',
-        'port': 27017,
-        'username': 'activity_monitor',
-        'password': 'activity_456',
-        'database_name': 'user_activity',
-    },
-    {
-        'name': 'MongoDB Session Store',
-        'db_type': 'mongodb',
-        'host': 'session-db.company.com',
-        'port': 27017,
-        'username': 'session_mgr',
-        'password': 'session_pass_789',
-        'database_name': 'sessions',
-    },
-    # ClickHouse - Metrics/Analytics
-    {
-        'name': 'ClickHouse Metrics',
+    'clickhouse': {
         'db_type': 'clickhouse',
-        'host': 'metrics.analytics.com',
+        'host': 'localhost',
         'port': 9000,
-        'username': 'metrics_read',
-        'password': 'metrics_123',
-        'database_name': 'metrics_database',
+        'database_name': 'default',
     },
-]
+}
+
+# Define credentials for each database type
+connection_credentials = {
+    'postgresql': {
+        'username': 'postgres',
+        'password': 'postgres',
+    },
+    'mysql': {
+        'username': 'root',
+        'password': 'root',
+    },
+    'mongodb': {
+        'username': 'admin',
+        'password': 'admin',
+    },
+    'clickhouse': {
+        'username': 'default',
+        'password': 'default',
+    },
+}
 
 connections_map = {}
-for conn_data in demo_connections:
-    conn, created = DatabaseConnection.objects.get_or_create(
-        name=conn_data['name'],
-        defaults={
-            'db_type': conn_data['db_type'],
-            'host': conn_data['host'],
-            'port': conn_data['port'],
-            'username': conn_data['username'],
-            'password': conn_data['password'],
-            'database_name': conn_data['database_name'],
-        }
-    )
-    connections_map[conn.name] = conn
-    status = "✅ Created" if created else "⚠️  Existing"
-    print(f"  {status}: {conn.name}")
-    print(f"            → {conn.db_type}://{conn.host}:{conn.port}/{conn.database_name}")
+
+# Create connections for each user (one of each database type)
+for username, user in users_map.items():
+    print(f"\n  👤 Creating connections for {username}:")
+    
+    for db_type, credentials in connection_credentials.items():
+        template = connection_templates[db_type]
+        conn_name = f"{db_type.capitalize()} Connection ({username})"
+        
+        conn, created = DatabaseConnection.objects.get_or_create(
+            user=user,
+            name=conn_name,
+            defaults={
+                'db_type': template['db_type'],
+                'host': template['host'],
+                'port': template['port'],
+                'username': credentials['username'],
+                'password': credentials['password'],
+                'database_name': template['database_name'],
+            }
+        )
+        
+        key = f"{username}_{db_type}"
+        connections_map[key] = conn
+        status = "✅ Created" if created else "⚠️  Existing"
+        print(f"    {status}: {conn_name}")
+        print(f"              → {db_type}://{template['host']}:{template['port']}/{template['database_name']}")
 
 # ============================================================================
-# STEP 3: CREATE DEMO EXTRACTED DATA & STORED FILES
+# STEP 3: CREATE DEMO EXTRACTED DATA & STORED FILES (Per User, All DB Types)
 # ============================================================================
-print("\n📊 STEP 3: Creating Demo Extracted Data & Files...")
+print("\n📊 STEP 3: Creating Demo Extracted Data & Files for Each User...")
 print("-" * 80)
 
-# Sample data for different databases
-sample_data = {
-    'users': [
-        {'id': 1, 'username': 'john_doe', 'email': 'john@example.com', 'role': 'admin', 'created_at': '2024-01-15'},
-        {'id': 2, 'username': 'jane_smith', 'email': 'jane@example.com', 'role': 'user', 'created_at': '2024-02-20'},
-        {'id': 3, 'username': 'bob_wilson', 'email': 'bob@example.com', 'role': 'user', 'created_at': '2024-03-10'},
-    ],
-    'orders': [
-        {'order_id': 1001, 'customer_id': 1, 'amount': 1500.00, 'status': 'completed', 'date': '2024-04-01'},
-        {'order_id': 1002, 'customer_id': 2, 'amount': 2300.50, 'status': 'pending', 'date': '2024-04-05'},
-        {'order_id': 1003, 'customer_id': 3, 'amount': 890.25, 'status': 'completed', 'date': '2024-04-10'},
-    ],
-    'products': [
-        {'product_id': 101, 'name': 'Laptop Pro', 'price': 999.99, 'stock': 45, 'category': 'Electronics'},
-        {'product_id': 102, 'name': 'Mouse Wireless', 'price': 29.99, 'stock': 200, 'category': 'Accessories'},
-        {'product_id': 103, 'name': 'USB Cable 2m', 'price': 9.99, 'stock': 500, 'category': 'Cables'},
-    ],
-    'metrics': [
-        {'metric_id': 1, 'name': 'page_views', 'value': 15420, 'timestamp': '2024-04-13T10:00:00'},
-        {'metric_id': 2, 'name': 'active_users', 'value': 342, 'timestamp': '2024-04-13T10:05:00'},
-        {'metric_id': 3, 'name': 'api_latency_ms', 'value': 45, 'timestamp': '2024-04-13T10:10:00'},
-    ],
+# Sample data for different database types - 7 tables each
+sample_data_by_db = {
+    'postgresql': {
+        'users': [{'id': 1, 'name': 'Alice'}, {'id': 2, 'name': 'Bob'}],
+        'products': [{'id': 101, 'name': 'Laptop'}, {'id': 102, 'name': 'Mouse'}],
+        'orders': [{'id': 1001, 'product_id': 101}, {'id': 1002, 'product_id': 102}],
+        'inventory': [{'id': 1, 'product_id': 101, 'stock': 50}],
+        'customers': [{'id': 1, 'name': 'Customer A'}, {'id': 2, 'name': 'Customer B'}],
+        'employees': [{'id': 1, 'name': 'Employee X'}, {'id': 2, 'name': 'Employee Y'}],
+        'departments': [{'id': 1, 'name': 'Sales'}, {'id': 2, 'name': 'Support'}],
+    },
+    'mysql': {
+        'clients': [{'id': 1, 'name': 'Client 1'}, {'id': 2, 'name': 'Client 2'}],
+        'invoices': [{'id': 201, 'client_id': 1, 'amount': 500}],
+        'payments': [{'id': 301, 'invoice_id': 201, 'amount': 500}],
+        'suppliers': [{'id': 1, 'name': 'Supplier Z'}],
+        'purchase_orders': [{'id': 401, 'supplier_id': 1}],
+        'shipments': [{'id': 501, 'order_id': 401}],
+        'locations': [{'id': 1, 'city': 'New York'}, {'id': 2, 'city': 'London'}],
+    },
+    'mongodb': {
+        'articles': [{'_id': 'a1', 'title': 'Mongo Intro'}],
+        'comments': [{'_id': 'c1', 'article_id': 'a1', 'text': 'Great!'}],
+        'authors': [{'_id': 'au1', 'name': 'John Doe'}],
+        'sessions': [{'_id': 's1', 'user_id': 'au1'}],
+        'logs': [{'_id': 'l1', 'event': 'login'}],
+        'media': [{'_id': 'm1', 'type': 'image'}],
+        'tags': [{'_id': 't1', 'name': 'database'}],
+    },
+    'clickhouse': {
+        'page_views': [{'id': 1, 'url': '/home'}],
+        'events': [{'id': 1, 'name': 'click'}],
+        'users_ch': [{'id': 1, 'name': 'CH User'}],
+        'sessions_ch': [{'id': 1, 'user_id': 1}],
+        'performance': [{'id': 1, 'metric': 'load_time', 'value': 1.2}],
+        'errors': [{'id': 1, 'message': 'Error 500'}],
+        'campaigns': [{'id': 1, 'name': 'Summer Sale'}],
+    },
 }
 
 files_created = []
 
-# Create extracted data for john_sales (owner)
-print("\n  👤 Creating files for john_sales (file owner):")
-for conn_name, data_list in sample_data.items():
-    if conn_name in connections_map:
-        extracted_data = ExtractedData.objects.create(
-            connection=connections_map[conn_name],
-            data=data_list
-        )
-        stored_file = StoredFile.objects.create(
-            user=users_map['john_sales'],
-            extracted_data=extracted_data,
-            filepath=f"/media/extraction_{conn_name}_john_{datetime.now().strftime('%Y%m%d%H%M%S')}.json",
-            format_type='json'
-        )
-        files_created.append(('john_sales', stored_file))
-        print(f"    ✅ {conn_name} data extraction")
-
-# Create extracted data for sarah_analytics (will be shared)
-print("\n  👤 Creating files for sarah_analytics:")
-for conn_name, data_list in sample_data.items():
-    if conn_name in connections_map:
-        extracted_data = ExtractedData.objects.create(
-            connection=connections_map[conn_name],
-            data=data_list
-        )
-        stored_file = StoredFile.objects.create(
-            user=users_map['sarah_analytics'],
-            extracted_data=extracted_data,
-            filepath=f"/media/extraction_{conn_name}_sarah_{datetime.now().strftime('%Y%m%d%H%M%S')}.json",
-            format_type='json'
-        )
-        files_created.append(('sarah_analytics', stored_file))
-        print(f"    ✅ {conn_name} data extraction")
-
-# Create extracted data for mike_reporting
-print("\n  👤 Creating files for mike_reporting:")
-for conn_name, data_list in sample_data.items():
-    if conn_name in connections_map:
-        extracted_data = ExtractedData.objects.create(
-            connection=connections_map[conn_name],
-            data=data_list
-        )
-        stored_file = StoredFile.objects.create(
-            user=users_map['mike_reporting'],
-            extracted_data=extracted_data,
-            filepath=f"/media/extraction_{conn_name}_mike_{datetime.now().strftime('%Y%m%d%H%M%S')}.json",
-            format_type='json'
-        )
-        files_created.append(('mike_reporting', stored_file))
-        print(f"    ✅ {conn_name} data extraction")
+# Create extracted data for each user with all 4 database types
+for username, user in users_map.items():
+    print(f"\n  👤 Creating data extractions for {username}:")
+    
+    for db_type, tables in sample_data_by_db.items():
+        conn_key = f"{username}_{db_type}"
+        
+        if conn_key in connections_map:
+            conn = connections_map[conn_key]
+            
+            # Create one file per table (7 tables per DB type)
+            for table_name, sample_data in tables.items():
+                # Create extracted data
+                extracted_data = ExtractedData.objects.create(
+                    connection=conn,
+                    data=sample_data
+                )
+                
+                # Create stored file linked to this extraction
+                stored_file = StoredFile.objects.create(
+                    user=user,
+                    extracted_data=extracted_data,
+                    filepath=f"/media/extraction_{db_type}_{table_name}_{username}_{datetime.now().strftime('%Y%m%d%H%M%S')}.json",
+                    format_type='json'
+                )
+                files_created.append((username, stored_file))
+                print(f"    ✅ {db_type.upper()} - Table: {table_name} extraction created")
 
 # ============================================================================
 # STEP 4: SET UP FILE SHARING TO DEMONSTRATE RBAC
@@ -282,46 +237,61 @@ print("\n" + "=" * 80)
 print("✨ DEMO DATA POPULATION COMPLETE!")
 print("=" * 80)
 
+total_connections = len([k for k in connections_map.keys()])
 print("\n📋 SUMMARY:")
 print(f"  ✅ Users Created: {len(demo_users)}")
-print(f"  ✅ Database Connections: {len(demo_connections)}")
-print(f"  ✅ Extracted Files: {len(files_created)}")
+print(f"  ✅ Database Connections (Per User): 4 types × {len(users_map)} users = {total_connections} connections")
+print(f"  ✅ Extracted Files: {len(files_created)} (4 files per user)")
 print(f"  ✅ Shared Files: Multiple (see access rules below)")
 
-print("\n👥 USER CREDENTIALS:")
+print("\n👥 USER CREDENTIALS & CONNECTION ASSIGNMENTS:")
 for user in demo_users:
-    print(f"  • {user['username']:20} | Password: {user['password']:15} | {user['email']}")
+    print(f"  • {user['username']:20} | Password: {user['password']:15}")
+    print(f"    └─ Database Connections:")
+    for db_type in ['postgresql', 'mysql', 'mongodb', 'clickhouse']:
+        key = f"{user['username']}_{db_type}"
+        if key in connections_map:
+            print(f"       ✅ {db_type.upper()}")
 
-print("\n🔐 ACCESS RULES DEMONSTRATION:")
+print("\n🔐 ACCESS RULES DEMONSTRATION (Per-User Filtering):")
 print("  ADMIN (admin):")
+print("    ✅ Can see ALL connections from ALL users")
 print("    ✅ Can see ALL files from ALL users")
 print("    ✅ Can modify ANY file")
 print("    ✅ Can share/unshare ANY file")
 print("    ✅ Full system access")
 print("\n  SALES USER (john_sales):")
-print("    ✅ Can see his own files (john_sales_*.json)")
-print("    ✅ Can see files shared with him (2 files from sarah)")
-print("    ❌ Cannot see sarah's other files")
-print("    ✅ Can share his files with others")
+print("    ✅ Can see ONLY his own connections (4: PostgreSQL, MySQL, MongoDB, ClickHouse)")
+print("    ✅ Can see his own files (4 data extractions from each database type)")
+print("    ✅ Can see files shared with him (if any)")
+print("    ❌ Cannot see other users' connections")
+print("    ❌ Cannot see other users' files (unless shared)")
 print("\n  ANALYTICS USER (sarah_analytics):")
-print("    ✅ Can see her own files (sarah_analytics_*.json)")
-print("    ✅ Can see files shared with her (2 files from john)")
-print("    ✅ Can see files shared with mike (shares with mike)")
-print("    ❌ Cannot see john's other files")
+print("    ✅ Can see ONLY her own connections (4: PostgreSQL, MySQL, MongoDB, ClickHouse)")
+print("    ✅ Can see her own files (4 data extractions from each database type)")
+print("    ✅ Can see files shared with her (if any)")
+print("    ❌ Cannot see other users' connections")
+print("    ❌ Cannot see other users' files (unless shared)")
 print("\n  REPORTING USER (mike_reporting):")
-print("    ✅ Can see his own files (mike_reporting_*.json)")
-print("    ✅ Can see file shared with him (1 file from sarah)")
-print("    ❌ Cannot see other users' files")
+print("    ✅ Can see ONLY his own connections (4: PostgreSQL, MySQL, MongoDB, ClickHouse)")
+print("    ✅ Can see his own files (4 data extractions from each database type)")
+print("    ✅ Can see files shared with him (if any)")
+print("    ❌ Cannot see other users' connections")
+print("    ❌ Cannot see other users' files (unless shared)")
 
 print("\n🌐 ACCESS AT UI:")
 print("  http://localhost:3000/")
 print("    • Login with any user credentials above")
-print("    • Each user will see different files based on RBAC rules")
-print("    • Files show access level badges: 👑 Admin | 🔒 Owner | 📤 Shared")
+print("    • Connections dropdown will show ONLY that user's 4 connections")
+print("    • File list will show ONLY that user's files + shared files")
+print("    • Each user starts with complete demo data for all 4 database types")
 
-print("\n📊 DATABASE CONNECTIONS AVAILABLE:")
-for i, conn_data in enumerate(demo_connections, 1):
-    print(f"  {i}. {conn_data['name']}")
-    print(f"     → {conn_data['db_type']}://{conn_data['username']}@{conn_data['host']}:{conn_data['port']}/{conn_data['database_name']}")
+print("\n📊 DATABASE TYPES AVAILABLE TO EACH USER:")
+for db_type in ['postgresql', 'mysql', 'mongodb', 'clickhouse']:
+    creds = connection_credentials[db_type]
+    template = connection_templates[db_type]
+    print(f"  • {db_type.upper()}")
+    print(f"    └─ {template['host']}:{template['port']}/{template['database_name']}")
+    print(f"    └─ Credentials: {creds['username']} / {creds['password']}")
 
 print("\n" + "=" * 80)

@@ -109,3 +109,13 @@ export async function getTables(connectionId: number): Promise<string[]> {
     const result = await response.json();
     return result.tables || [];
 }
+
+export const getExtractedDataByTable = async (connectionId: number, tableName: string): Promise<ExtractedData> => {
+  const response = await apiClient.get(`/extracted_data/by_table/?connection_id=${connectionId}&table_name=${tableName}`);
+  return response.data;
+};
+
+export const updateExtractedData = async (id: number, data: any): Promise<ExtractedData> => {
+  const response = await apiClient.patch(`/extracted_data/${id}/`, { data });
+  return response.data;
+};

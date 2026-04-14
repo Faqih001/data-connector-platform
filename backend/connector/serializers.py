@@ -10,9 +10,12 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class DatabaseConnectionSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
     class Meta:
         model = DatabaseConnection
-        fields = '__all__'
+        fields = ['id', 'user', 'name', 'db_type', 'host', 'port', 'username', 'password', 'database_name', 'created_at']
+        read_only_fields = ['user', 'created_at']
 
 
 class StoredFileSerializer(serializers.ModelSerializer):

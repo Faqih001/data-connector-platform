@@ -5,7 +5,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataGrid } from "./components/DataGrid";
 import { ConnectionForm } from "./components/ConnectionForm";
 import { FileViewer } from "./components/FileViewer";
-import { getConnections, createConnection, extractData, getFiles, submitData, getTables } from "./lib/api";
+import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable } from "./lib/api";
 import { DatabaseConnection, StoredFile } from "./types";
 
 const API_URL = 'http://localhost:8001/api';
@@ -29,6 +29,7 @@ export default function Home() {
   const [batchSize, setBatchSize] = useState<number>(1000);
   const [format, setFormat] = useState<'json' | 'csv'>('json');
   const [data, setData] = useState<any[]>([]);
+  const [extractedDataInfo, setExtractedDataInfo] = useState<any>(null);
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<StoredFile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -96,6 +97,31 @@ export default function Home() {
       setTableName("");
     }
   }, [selectedConnection]);
+
+  // Fetch data when table name changes
+  useEffect(() => {
+    if (selectedConnection && tableName) {
+      const fetchDataForTable = async () => {
+        try {
+          setIsLoading(true);
+          setError(null);
+          const result = await getExtractedDataByTable(selectedConnection.id, tableName);
+          setData(result.data || []);
+          setExtractedDataInfo(result);
+        } catch (err) {
+          setError("Failed to fetch data for table.");
+          setData([]);
+          setExtractedDataInfo(null);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchDataForTable();
+    } else {
+      setData([]);
+      setExtractedDataInfo(null);
+    }
+  }, [selectedConnection, tableName]);
 
   // Memos - MUST come third
   const columns = useMemo<ColumnDef<any>[]>(() => {
@@ -193,33 +219,20 @@ export default function Home() {
     }
   };
 
-  const handleExtractData = async () => {
-    if (!selectedConnection || !tableName) {
-      setError("Please select a connection and enter a table name.");
-      return;
-    }
-    try {
-      setIsLoading(true);
-      setError(null);
-      const extractedData = await extractData(selectedConnection.id, tableName, batchSize, format);
-      setData(extractedData);
-    } catch (err) {
-      setError("Failed to extract data.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSaveData = async (updatedData: any[]) => {
-    if (!selectedFile) {
-      setError("Please select a file to save the data.");
+    if (!extractedDataInfo) {
+      setError("No data loaded to save.");
       return;
     }
     try {
       setIsLoading(true);
       setError(null);
-      await submitData(selectedFile.id, updatedData);
-      setData(updatedData);
+      await updateExtractedData(extractedDataInfo.id, updatedData);
+      setData(updatedData); // Optimistically update UI
+      // Optionally re-fetch to confirm
+      const result = await getExtractedDataByTable(selectedConnection!.id, tableName);
+      setData(result.data || []);
+      setExtractedDataInfo(result);
     } catch (err) {
       setError("Failed to save data.");
     } finally {
@@ -335,27 +348,37 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Quick Action Buttons */}
-        <div className="mb-6 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <a
-              href="http://localhost:8001/api/files/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-medium py-2 px-4 rounded-lg transition text-center text-sm"
-            >
-              📊 API Files
-            </a>
-            <a
-              href="http://localhost:8001/admin/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 bg-gradient-to-r from-purple-400 to-purple-600 hover:from-purple-500 hover:to-purple-700 text-white font-medium py-2 px-4 rounded-lg transition text-center text-sm"
-            >
-              📊 Admin Panel
-            </a>
+        {/* Quick Action Buttons - Admin Only */}
+        {currentUser?.is_staff && (
+          <div className="mb-6 space-y-3">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <a
+                href="http://localhost:8001/api/connections/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-gradient-to-r from-cyan-400 to-cyan-600 hover:from-cyan-500 hover:to-cyan-700 text-white font-medium py-2 px-4 rounded-lg transition text-center text-sm"
+              >
+                🔗 API Connections
+              </a>
+              <a
+                href="http://localhost:8001/api/files/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-medium py-2 px-4 rounded-lg transition text-center text-sm"
+              >
+                📊 API Files
+              </a>
+              <a
+                href="http://localhost:8001/admin/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-gradient-to-r from-purple-400 to-purple-600 hover:from-purple-500 hover:to-purple-700 text-white font-medium py-2 px-4 rounded-lg transition text-center text-sm"
+              >
+                📊 Admin Panel
+              </a>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
           {/* Left Sidebar - ConnectionForm + FileViewer */}
@@ -392,64 +415,36 @@ export default function Home() {
               
               {/* Table Name Dropdown */}
               <div className="mb-3">
-                <label className="block text-xs sm:text-sm font-medium mb-1">Table Name</label>
-                <select
-                  value={tableName}
-                  onChange={(e) => setTableName(e.target.value)}
-                  disabled={!selectedConnection || availableTables.length === 0}
-                  className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                  <option value="">
-                    {!selectedConnection
-                      ? "Select a connection first"
-                      : availableTables.length === 0
-                      ? "No tables found"
-                      : "Choose a table..."}
-                  </option>
-                  {availableTables.map((table) => (
-                    <option key={table} value={table}>
-                      {table}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium mb-1">Batch Size</label>
-                  <input
-                    type="number"
-                    value={batchSize}
-                    onChange={(e) => setBatchSize(parseInt(e.target.value) || 1000)}
-                    min="1"
-                    className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Rows per batch"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium mb-1">Format</label>
+                <label htmlFor="tableName" className="block text-sm font-medium text-gray-700">
+                    Table Name
+                  </label>
                   <select
-                    value={format}
-                    onChange={(e) => setFormat(e.target.value as 'json' | 'csv')}
-                    className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    id="tableName"
+                    value={tableName}
+                    onChange={(e) => setTableName(e.target.value)}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    disabled={!selectedConnection || availableTables.length === 0}
                   >
-                    <option value="json">JSON</option>
-                    <option value="csv">CSV</option>
+                    <option value="">{availableTables.length > 0 ? 'Select a table' : 'No tables found'}</option>
+                    {availableTables.map((table) => (
+                      <option key={table} value={table}>
+                        {table}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
-              <button
-                onClick={handleExtractData}
-                className="w-full px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition text-sm"
-                disabled={isLoading || !selectedConnection || !tableName}
-              >
-                {isLoading ? "Extracting..." : "Extract Data"}
-              </button>
+              {error && <p className="text-red-500 mt-4">{error}</p>}
             </div>
 
-            {error && <div className="p-3 text-red-600 bg-red-50 border border-red-200 rounded text-sm">{error}</div>}
-
-            <DataGrid columns={columns} data={data} setData={setData} onSave={handleSaveData} />
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-4">Extracted Data</h2>
+              <DataGrid
+                columns={columns}
+                data={data}
+                onSave={handleSaveData}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -11,6 +11,7 @@ class DatabaseConnection(models.Model):
         ('clickhouse', 'ClickHouse'),
     ]
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='database_connections')
     name = models.CharField(max_length=255)
     db_type = models.CharField(max_length=50, choices=DB_TYPE_CHOICES)
     host = models.CharField(max_length=255)

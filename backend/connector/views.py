@@ -19,8 +19,21 @@ from django.utils.decorators import method_decorator
 from django.db.models import Q
 
 class DatabaseConnectionViewSet(viewsets.ModelViewSet):
-    queryset = DatabaseConnection.objects.all()
     serializer_class = DatabaseConnectionSerializer
+
+    def get_queryset(self):
+        """Filter connections by current user"""
+        user = self.request.user
+        if not user.is_authenticated:
+            return DatabaseConnection.objects.none()
+        # Admin sees all connections, regular users see their own
+        if user.is_staff or user.is_superuser:
+            return DatabaseConnection.objects.all()
+        return DatabaseConnection.objects.filter(user=user)
+
+    def perform_create(self, serializer):
+        """Assign the current user to the connection when creating"""
+        serializer.save(user=self.request.user)
 
     @action(detail=True, methods=['post'])
     def extract_data(self, request, pk=None):
@@ -83,15 +96,37 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def get_tables(self, request, pk=None):
-        """Get list of available tables for this connection"""
+        """
+        Get list of available tables for this connection.
+        This is now based on the StoredFile records, as we are using mock data.
+        The 'table name' is parsed from the filepath.
+        """
         connection = self.get_object()
+        user = request.user
+
         try:
-            from .connectors import get_connector
-            connector = get_connector(connection)
-            connector.connect()
-            tables = connector.get_tables()
-            connector.close()
-            return Response({"tables": tables}, status=status.HTTP_200_OK)
+            # Filter stored files by the connection and the user (or all for admin)
+            if user.is_staff or user.is_superuser:
+                files = StoredFile.objects.filter(extracted_data__connection=connection)
+            else:
+                files = StoredFile.objects.filter(extracted_data__connection=connection, user=user)
+
+            # Extract table names from filepaths
+            # e.g., /media/extraction_postgresql_users_userone_20260414103050.json -> users
+            table_names = set()
+            for f in files:
+                try:
+                    # Filename parts: extraction_{db_type}_{table_name}_{user}_{timestamp}.json
+                    filename = os.path.basename(f.filepath)
+                    parts = filename.split('_')
+                    if len(parts) >= 4 and parts[0] == 'extraction':
+                        table_names.add(parts[2])
+                except (IndexError, ValueError):
+                    # Ignore files with unexpected naming conventions
+                    continue
+            
+            return Response(sorted(list(table_names)), status=status.HTTP_200_OK)
+
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -523,3 +558,85 @@ def search_users(request):
             {"error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+class ExtractedDataViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for viewing and editing ExtractedData instances.
+    """
+    serializer_class = ExtractedDataSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Users can only access data linked to their files or connections.
+        Admins can access all data.
+        """
+        user = self.request.user
+        if user.is_staff or user.is_superuser:
+            return ExtractedData.objects.all()
+        
+        # Users can see data if they own the StoredFile or the DatabaseConnection
+        return ExtractedData.objects.filter(
+            Q(storedfile__user=user) | Q(connection__user=user)
+        ).distinct()
+
+    @action(detail=False, methods=['get'], url_path='by_table')
+    def get_by_table(self, request):
+        """
+        Get extracted data by connection_id and table_name.
+        This finds the relevant StoredFile and returns its associated ExtractedData.
+        """
+        connection_id = request.query_params.get('connection_id')
+        table_name = request.query_params.get('table_name')
+        user = request.user
+
+        if not connection_id or not table_name:
+            return Response(
+                {"error": "connection_id and table_name are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Find a StoredFile that matches the criteria
+            # We look for a filename that contains the table name and belongs to the right connection
+            
+            # Build the query
+            query = Q(extracted_data__connection_id=connection_id) & Q(filepath__contains=f"_{table_name}_")
+
+            # Filter by user if not admin
+            if not (user.is_staff or user.is_superuser):
+                query &= Q(user=user)
+
+            # Find the first matching file
+            stored_file = StoredFile.objects.filter(query).first()
+
+            if not stored_file:
+                return Response({"error": "No data found for the specified table and connection."}, status=status.HTTP_4_NOT_FOUND)
+
+            # Get the associated extracted data
+            extracted_data = stored_file.extracted_data
+            serializer = self.get_serializer(extracted_data)
+            return Response(serializer.data)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Allow updating the 'data' field of an ExtractedData instance.
+        """
+        instance = self.get_object()
+        
+        # Security check: ensure user has permission
+        if not (request.user.is_staff or request.user.is_superuser):
+            # Check if the user owns the connection or the file
+            is_connection_owner = instance.connection.user == request.user
+            is_file_owner = StoredFile.objects.filter(extracted_data=instance, user=request.user).exists()
+            if not is_connection_owner and not is_file_owner:
+                return Response({"error": "You do not have permission to edit this data."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
