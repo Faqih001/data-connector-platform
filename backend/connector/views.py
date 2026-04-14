@@ -81,6 +81,20 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['get'])
+    def get_tables(self, request, pk=None):
+        """Get list of available tables for this connection"""
+        connection = self.get_object()
+        try:
+            from .connectors import get_connector
+            connector = get_connector(connection)
+            connector.connect()
+            tables = connector.get_tables()
+            connector.close()
+            return Response({"tables": tables}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class StoredFileViewSet(viewsets.ModelViewSet):
     queryset = StoredFile.objects.all()
     serializer_class = StoredFileSerializer

@@ -100,3 +100,12 @@ export async function deleteFile(fileId: number): Promise<void> {
         throw new Error('Failed to delete file');
     }
 }
+
+export async function getTables(connectionId: number): Promise<string[]> {
+    const response = await fetch(`${API_URL}/connections/${connectionId}/get_tables/`, fetchOptions);
+    if (!response.ok) {
+        throw new Error('Failed to fetch tables');
+    }
+    const result = await response.json();
+    return result.tables || [];
+}

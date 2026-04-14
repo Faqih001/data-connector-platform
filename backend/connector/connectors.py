@@ -60,6 +60,14 @@ class PostgresConnector(BaseConnector):
         rows = cursor.fetchall()
         return [{col: serialize_value(val) for col, val in zip(columns, row)} for row in rows]
 
+    def get_tables(self):
+        cursor = self.connection.cursor()
+        cursor.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
+        )
+        tables = [row[0] for row in cursor.fetchall()]
+        return tables
+
 class MySQLConnector(BaseConnector):
     def connect(self):
         # Use decrypted_password property if available (from Django model)
@@ -78,6 +86,12 @@ class MySQLConnector(BaseConnector):
         rows = cursor.fetchall()
         return [{col: serialize_value(val) for col, val in row.items()} for row in rows]
 
+    def get_tables(self):
+        cursor = self.connection.cursor()
+        cursor.execute(f"SELECT table_name FROM information_schema.tables WHERE table_schema = database() ORDER BY table_name")
+        tables = [row[0] for row in cursor.fetchall()]
+        return tables
+
 class MongoConnector(BaseConnector):
     def connect(self):
         # Use decrypted_password property if available (from Django model)
@@ -95,6 +109,11 @@ class MongoConnector(BaseConnector):
         rows = list(collection.find().skip(offset).limit(batch_size))
         return [{col: serialize_value(val) for col, val in row.items()} for row in rows]
 
+    def get_tables(self):
+        db = self.connection[self.connection_details.database_name]
+        collections = db.list_collection_names()
+        return collections
+
 class ClickHouseConnector(BaseConnector):
     def connect(self):
         # Use decrypted_password property if available (from Django model)
@@ -109,6 +128,11 @@ class ClickHouseConnector(BaseConnector):
 
     def fetch_batch(self, table_name, batch_size, offset):
         return self.connection.execute(f"SELECT * FROM {table_name} LIMIT {batch_size} OFFSET {offset}", with_column_types=True)
+
+    def get_tables(self):
+        result = self.connection.execute(f"SELECT name FROM system.tables WHERE database = '{self.connection_details.database_name}' ORDER BY name")
+        tables = [row[0] for row in result]
+        return tables
 
 def get_connector(connection_details):
     if connection_details.db_type == 'postgresql':

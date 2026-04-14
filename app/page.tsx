@@ -5,7 +5,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataGrid } from "./components/DataGrid";
 import { ConnectionForm } from "./components/ConnectionForm";
 import { FileViewer } from "./components/FileViewer";
-import { getConnections, createConnection, extractData, getFiles, submitData } from "./lib/api";
+import { getConnections, createConnection, extractData, getFiles, submitData, getTables } from "./lib/api";
 import { DatabaseConnection, StoredFile } from "./types";
 
 const API_URL = 'http://localhost:8001/api';
@@ -24,6 +24,7 @@ export default function Home() {
   const [selectedConnection, setSelectedConnection] = useState<
     DatabaseConnection | null
   >(null);
+  const [availableTables, setAvailableTables] = useState<string[]>([]);
   const [tableName, setTableName] = useState("");
   const [batchSize, setBatchSize] = useState<number>(1000);
   const [format, setFormat] = useState<'json' | 'csv'>('json');
@@ -75,6 +76,26 @@ export default function Home() {
       loadInitialData();
     }
   }, [isLoggedIn]);
+
+  // Fetch tables when connection is selected
+  useEffect(() => {
+    if (selectedConnection) {
+      const fetchTablesForConnection = async () => {
+        try {
+          const tables = await getTables(selectedConnection.id);
+          setAvailableTables(tables);
+          setTableName(""); // Reset table name when connection changes
+        } catch (err) {
+          console.error("Failed to fetch tables:", err);
+          setAvailableTables([]);
+        }
+      };
+      fetchTablesForConnection();
+    } else {
+      setAvailableTables([]);
+      setTableName("");
+    }
+  }, [selectedConnection]);
 
   // Memos - MUST come third
   const columns = useMemo<ColumnDef<any>[]>(() => {
@@ -337,78 +358,99 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
-          {/* Left Sidebar - Increased to 2/4 width on desktop */}
+          {/* Left Sidebar - ConnectionForm + FileViewer */}
           <div className="lg:col-span-2 space-y-4 lg:max-h-screen lg:overflow-y-auto pr-2">
-          <ConnectionForm onSubmit={handleCreateConnection} isLoading={isLoading} />
-
-          <div className="p-4 border rounded-lg bg-white shadow-sm">
-            <h2 className="text-base sm:text-lg font-bold mb-3">Connections</h2>
-            <select
-              className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onChange={(e) => {
-                const conn = connections.find((c) => c.id === parseInt(e.target.value));
-                setSelectedConnection(conn || null);
-              }}
-            >
-              <option>Select a connection</option>
-              {connections.map((conn) => (
-                <option key={conn.id} value={conn.id}>
-                  {conn.name}
-                </option>
-              ))}
-            </select>
+            <ConnectionForm onSubmit={handleCreateConnection} isLoading={isLoading} />
+            <FileViewer files={files} onFileSelect={setSelectedFile} onRefresh={loadInitialData} />
           </div>
 
-          <FileViewer files={files} onFileSelect={setSelectedFile} onRefresh={loadInitialData} />
-        </div>
+          {/* Right Sidebar - Connections + Extract Data + DataGrid */}
+          <div className="lg:col-span-2 space-y-4 lg:max-h-screen lg:overflow-y-auto pl-2">
+            {/* Connections Section - Moved to top of right sidebar */}
+            <div className="p-4 border rounded-lg bg-white shadow-sm">
+              <h2 className="text-base sm:text-lg font-bold mb-3">🔗 Connections</h2>
+              <select
+                className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={selectedConnection?.id || ""}
+                onChange={(e) => {
+                  const conn = connections.find((c) => c.id === parseInt(e.target.value));
+                  setSelectedConnection(conn || null);
+                }}
+              >
+                <option value="">Select a connection</option>
+                {connections.map((conn) => (
+                  <option key={conn.id} value={conn.id}>
+                    {conn.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div className="lg:col-span-2 space-y-4 lg:max-h-screen lg:overflow-y-auto pl-2">
-          <div className="p-4 border rounded-lg bg-white shadow-sm">
-            <h2 className="text-base sm:text-lg font-bold mb-3">Extract Data</h2>
-            <input
-              type="text"
-              placeholder="Table Name"
-              value={tableName}
-              onChange={(e) => setTableName(e.target.value)}
-              className="w-full p-2 border rounded mb-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-1">Batch Size</label>
-                <input
-                  type="number"
-                  value={batchSize}
-                  onChange={(e) => setBatchSize(parseInt(e.target.value) || 1000)}
-                  min="1"
-                  className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Rows per batch"
-                />
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-1">Format</label>
+            {/* Extract Data Section */}
+            <div className="p-4 border rounded-lg bg-white shadow-sm">
+              <h2 className="text-base sm:text-lg font-bold mb-3">📊 Extract Data</h2>
+              
+              {/* Table Name Dropdown */}
+              <div className="mb-3">
+                <label className="block text-xs sm:text-sm font-medium mb-1">Table Name</label>
                 <select
-                  value={format}
-                  onChange={(e) => setFormat(e.target.value as 'json' | 'csv')}
-                  className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={tableName}
+                  onChange={(e) => setTableName(e.target.value)}
+                  disabled={!selectedConnection || availableTables.length === 0}
+                  className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  <option value="json">JSON</option>
-                  <option value="csv">CSV</option>
+                  <option value="">
+                    {!selectedConnection
+                      ? "Select a connection first"
+                      : availableTables.length === 0
+                      ? "No tables found"
+                      : "Choose a table..."}
+                  </option>
+                  {availableTables.map((table) => (
+                    <option key={table} value={table}>
+                      {table}
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium mb-1">Batch Size</label>
+                  <input
+                    type="number"
+                    value={batchSize}
+                    onChange={(e) => setBatchSize(parseInt(e.target.value) || 1000)}
+                    min="1"
+                    className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Rows per batch"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium mb-1">Format</label>
+                  <select
+                    value={format}
+                    onChange={(e) => setFormat(e.target.value as 'json' | 'csv')}
+                    className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="json">JSON</option>
+                    <option value="csv">CSV</option>
+                  </select>
+                </div>
+              </div>
+              <button
+                onClick={handleExtractData}
+                className="w-full px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition text-sm"
+                disabled={isLoading || !selectedConnection || !tableName}
+              >
+                {isLoading ? "Extracting..." : "Extract Data"}
+              </button>
             </div>
-            <button
-              onClick={handleExtractData}
-              className="w-full px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition text-sm"
-              disabled={isLoading || !selectedConnection || !tableName}
-            >
-              {isLoading ? "Extracting..." : "Extract Data"}
-            </button>
+
+            {error && <div className="p-3 text-red-600 bg-red-50 border border-red-200 rounded text-sm">{error}</div>}
+
+            <DataGrid columns={columns} data={data} setData={setData} onSave={handleSaveData} />
           </div>
-
-          {error && <div className="p-3 text-red-600 bg-red-50 border border-red-200 rounded text-sm">{error}</div>}
-
-          <DataGrid columns={columns} data={data} setData={setData} onSave={handleSaveData} />
-        </div>
         </div>
       </div>
     </main>
