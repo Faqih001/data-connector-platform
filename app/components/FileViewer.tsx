@@ -212,6 +212,19 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
     setSelectedUsers(newSelected);
   };
 
+  const getCsrfToken = async () => {
+    try {
+      const response = await fetch(`${API_URL}/csrf-token/`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      return data.csrfToken;
+    } catch (error) {
+      console.error('Failed to get CSRF token:', error);
+      throw error;
+    }
+  };
+
   const handleShare = async () => {
     if (!shareModal.fileId || selectedUsers.size === 0) {
       alert('Please select at least one user to share with');
@@ -220,10 +233,16 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
 
     setLoadingShare(true);
     try {
+      // Get CSRF token
+      const csrfToken = await getCsrfToken();
+      
       const response = await fetch(`${API_URL}/files/${shareModal.fileId}/share/`, {
         credentials: 'include',
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         body: JSON.stringify({ user_ids: Array.from(selectedUsers) })
       });
 
@@ -238,12 +257,47 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
           onRefresh();
         }
       } else {
-        alert('Failed to share file');
+        const errorData = await response.json();
+        alert('Failed to share file: ' + (errorData.error || 'Unknown error'));
       }
     } catch (error) {
       alert('Failed to share file: ' + error);
     } finally {
       setLoadingShare(false);
+    }
+  };
+
+  const handleUnshare = async (fileId: number, userId: number) => {
+    if (!window.confirm('Remove this user from shared access?')) {
+      return;
+    }
+
+    try {
+      // Get CSRF token
+      const csrfToken = await getCsrfToken();
+      
+      const response = await fetch(`${API_URL}/files/${fileId}/unshare/`, {
+        credentials: 'include',
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ user_ids: [userId] })
+      });
+
+      if (response.ok) {
+        alert('✅ User removed from shared access!');
+        // Refresh file list
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        const errorData = await response.json();
+        alert('Failed to remove user: ' + (errorData.error || 'Unknown error'));
+      }
+    } catch (error) {
+      alert('Failed to remove user: ' + error);
     }
   };
 
@@ -364,7 +418,9 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
                             <p className="text-xs text-gray-500">👤 {file.user.username || 'Unknown'}</p>
                           )}
                           {file.shared_with && file.shared_with.length > 0 && (
-                            <p className="text-xs text-green-600">📤 Shared with {file.shared_with.length}</p>
+                            <div className="text-xs text-green-600 mt-1">
+                              📤 Shared with: <span className="font-semibold">{file.shared_with.map(u => u.username).join(', ')}</span>
+                            </div>
                           )}
                           <div className="text-xs text-gray-500 mt-1">
                             Format: <span className="font-medium uppercase">{file.format_type || 'json'}</span>
@@ -387,6 +443,26 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
                           {access && (
                             <div className="text-xs text-gray-600 mb-2 p-2 bg-gray-50 rounded">
                               <p><strong>Access:</strong> {access.access_level.toUpperCase()} | Modify: {access.can_modify ? '✅' : '❌'} | Share: {access.can_share ? '✅' : '❌'}</p>
+                            </div>
+                          )}
+                          
+                          {/* Unshare section */}
+                          {access?.can_share && file.shared_with && file.shared_with.length > 0 && (
+                            <div className="p-2 bg-purple-50 rounded border border-purple-200 mb-2">
+                              <p className="text-xs font-semibold mb-2 text-purple-700">Shared with ({file.shared_with.length}):</p>
+                              <div className="space-y-1">
+                                {file.shared_with.map(user => (
+                                  <div key={user.id} className="flex justify-between items-center bg-white p-1.5 rounded border border-purple-100 text-xs">
+                                    <span>👤 {user.username}</span>
+                                    <button
+                                      onClick={() => handleUnshare(file.id, user.id)}
+                                      className="px-2 py-0.5 bg-red-400 text-white rounded hover:bg-red-500 text-xs font-medium"
+                                    >
+                                      ✕ Remove
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                           <div className="flex gap-2 items-center">
