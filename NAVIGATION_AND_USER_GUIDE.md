@@ -81,7 +81,7 @@ Choose based on your role:
                    │
         ┌──────────┼──────────┐
         │          │          │
-   PostgreSQL    MySQL    MongoDB
+   PostgreSQL    MySQL    MongoDB/Clickhouse
 ```
 
 ---
@@ -212,13 +212,12 @@ This is the **PRIMARY USER INTERFACE** - Most users will spend their time here.
 │                                                          │
 ├──┬─────────────────┬──┬──────────────────────────────────┤
 │  │ LEFT SIDEBAR    │  │   RIGHT MAIN AREA               │
-│  │                 │  │                                  │
+│  │                 │  │     Connections   │  │     - Format (JSON/CSV)         │
+│  │   Dropdown      │  │     - Extract Button            │
+│  │                                         │
 │  │ ► Connection    │  │   ► Extract Data Form           │
 │  │   Form          │  │     - Table Name Input          │
-│  │                 │  │     - Batch Size Selection      │
-│  │ ► Connections   │  │     - Format (JSON/CSV)         │
-│  │   Dropdown      │  │     - Extract Button            │
-│  │                 │  │                                  │
+│  │                 │  │     - Batch Size Selection      │     │  │                                  │
 │  │ ► Stored Files  │  │   ► Data Grid                   │
 │  │   Viewer        │  │     - Preview extracted data    │
 │  │   - File list   │  │     - Editable cells            │
