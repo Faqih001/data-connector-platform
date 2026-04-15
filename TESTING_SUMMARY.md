@@ -4,6 +4,7 @@
 
 ✅ **All 4 databases tested and working end-to-end**
 ✅ **Table creation feature fully functional via UI and API**
+✅ **Delete connection with cascade cleanup tested successfully**
 ✅ **Comprehensive test suite created for future reference**
 ✅ **CSRF security properly implemented**
 ✅ **All UI/API features validated**
@@ -102,6 +103,48 @@
 - Database: default ✅
 - Table creation: MergeTree engine with ORDER BY ✅
 - Test table: final_events_test created ✅
+
+### 5. Delete Connection Feature ✅
+
+#### MySQL Connection Deletion Test
+- **Connection:** Mysql Connection (admin) - ID: 30
+- **Test Result:** ✅ PASS
+- **Cascade Delete Verified:**
+  - ✅ Connection record deleted from database
+  - ✅ All 8 extracted demo_products files deleted
+  - ✅ ExtractedData records deleted (cascade)
+  - ✅ StoredFile records deleted (cascade)
+  - ✅ File count reduced from 116 → 108 files
+  - ✅ Connection removed from dropdown list
+  - ✅ Success toast displayed
+- **API Endpoint:** DELETE /api/connections/30/
+- **HTTP Status:** 204 No Content (correct)
+- **CSRF Token:** ✅ Properly validated
+
+#### ClickHouse Connection Deletion Test
+- **Connection:** My Click (ClickHouse) - ID: 46
+- **Test Result:** ✅ PASS
+- **Deletion Process:**
+  - ✅ User selected "My Click" from dropdown
+  - ✅ Delete button became active
+  - ✅ Confirmation dialog displayed with proper warning
+  - ✅ User confirmed deletion
+- **Cascade Delete Verified:**
+  - ✅ Connection record deleted from database
+  - ✅ "My Click" removed from connection dropdown
+  - ✅ UI state cleared (selected connection reset)
+  - ✅ Connection list refreshed
+  - ✅ Success toast: "Connection 'My Click' deleted successfully!"
+- **Verification After Deletion:**
+  - ✅ Connection dropdown opened
+  - ✅ "My Click" no longer in list
+  - ✅ Other connections still present
+  - ✅ No orphaned data left behind
+
+#### Delete Confirmation Dialog
+- **Message:** Clear warning about permanent deletion
+- **User Experience:** ✅ Clear warning presented
+- **Reversibility:** ⚠️ None - permanent deletion (as expected)
 
 ---
 

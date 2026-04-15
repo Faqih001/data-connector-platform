@@ -278,6 +278,31 @@ This is the **PRIMARY USER INTERFACE** - Most users will spend their time here.
    - Select them and click **Share**
    - They receive access confirmation
 
+#### Step 6 (Optional): Delete a Connection
+1. In the **Connections** dropdown
+2. Select a connection you want to delete
+3. Click the red **🗑️ Delete** button
+4. A confirmation dialog will appear:
+   ```
+   "Are you sure you want to delete the connection "Connection Name"?
+   This will delete all tables and extracted data associated with this connection.
+   This action cannot be undone."
+   ```
+5. Click **OK** to confirm (or **Cancel** to keep the connection)
+6. ✅ Success message appears: "Connection 'Connection Name' deleted successfully!"
+7. The connection is immediately removed from the dropdown
+8. All extracted files from that connection are permanently deleted
+9. All database tables associated with that connection are removed
+
+**⚠️ WARNING:** Deleting a connection is **PERMANENT** and **CANNOT BE UNDONE**. Make sure to download any files you need before deleting.
+
+**Connection Deletion Details:**
+- 🗑️ Deletes the connection record from the system
+- 📊 Deletes all extracted data from that connection
+- 📁 Deletes all stored files (JSON/CSV) from that connection  
+- 🔗 Removes all shares related to files from that connection
+- ✅ Confirmation dialog prevents accidental deletion
+
 ### Notifications (Toast Messages)
 
 The system shows **colored toast notifications** for feedback:

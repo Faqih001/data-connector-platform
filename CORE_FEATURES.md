@@ -69,6 +69,112 @@ def test_connection(request, connection_id):
 - **Extensibility:** Easy to add new database types
 - **Error Handling:** Clear error messages for invalid connections
 
+### Delete Connection with Cascade
+
+**Feature Overview**
+Users can delete database connections with complete cleanup of all associated data, extracted files, and metadata.
+
+**User Journey**
+```
+1. User selects a connection from dropdown
+2. User clicks 🗑️ Delete button
+3. Confirmation dialog appears with warning
+4. User confirms deletion
+5. Connection and all associated data deleted
+6. Success message displayed
+7. Connection removed from dropdown
+```
+
+**Implementation Details**
+```python
+# Backend - ViewSet destroy method
+def destroy(self, request, pk=None):
+    """
+    Delete a connection and all associated extracted data and stored files.
+    Cascade delete handled by Django ORM through ForeignKey relationships.
+    """
+    try:
+        connection = self.get_object()
+        connection_name = connection.name
+        
+        # Delete all ExtractedData records for this connection
+        # This will cascade delete StoredFile records due to OneToOneField
+        ExtractedData.objects.filter(connection=connection).delete()
+        
+        # Delete the connection itself
+        connection.delete()
+        
+        return Response(
+            {"message": f"Connection '{connection_name}' and all associated data deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT
+        )
+    except DatabaseConnection.DoesNotExist:
+        return Response(
+            {"error": "Connection not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+```
+
+**Cascade Delete Chain**
+```
+DatabaseConnection DELETE
+    ↓ (triggers)
+ExtractedData DELETE (via ForeignKey cascade)
+    ↓ (triggers)
+StoredFile DELETE (via OneToOneField cascade)
+```
+
+**Frontend UI Components**
+```typescript
+// Delete button in connection dropdown section
+<button onClick={handleDeleteConnection} disabled={!selectedConnection}>
+    🗑️ Delete
+</button>
+
+// Confirmation dialog
+window.confirm(
+    `Are you sure you want to delete the connection "${selectedConnection.name}"?\n` +
+    `This will delete all tables and extracted data associated with this connection.\n` +
+    `This action cannot be undone.`
+)
+
+// API call
+export async function deleteConnection(connectionId: number): Promise<{ message: string }> {
+    const csrfToken = await getCsrfToken();
+    
+    const response = await fetch(`${API_URL}/connections/${connectionId}/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': csrfToken,
+        },
+    });
+    
+    if (!response.ok) {
+        throw new Error('Failed to delete connection');
+    }
+    
+    // Handle 204 No Content
+    if (response.status === 204) {
+        return { message: 'Connection deleted successfully' };
+    }
+    
+    return response.json();
+}
+```
+
+**Key Considerations**
+- **Data Loss Warning:** Clear confirmation dialog explains consequences
+- **Cascade Safety:** Django ORM handles all cascade deletes atomically
+- **Permissions:** User must own the connection or be admin
+- **Audit:** Deletion is logged by Django and can be tracked
+- **CSRF Protection:** DELETE requests require valid CSRF token
+- **State Cleanup:** UI clears selected connection and resets forms
+
 ---
 
 ## 2️⃣ Batch Data Extraction

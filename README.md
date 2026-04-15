@@ -1,6 +1,6 @@
 # ✅ Data Connector Platform - COMPLETE & FUNCTIONAL
 
-**Status:** 🟢 **PRODUCTION READY** | **Last Updated:** April 14, 2026
+**Status:** 🟢 **PRODUCTION READY** | **Last Updated:** April 15, 2026
 
 This is a full-stack web application that allows users to connect to multiple databases, extract data in batches, edit the data in a grid, and send it to a backend for processing and storage.
 
@@ -12,10 +12,11 @@ This is a full-stack web application that allows users to connect to multiple da
 - ✅ Access control system active
 - ✅ Modern UI with modal dialogs
 - ✅ 4 demo users ready to use
-- ✅ 112 sample data files pre-loaded
+- ✅ 112+ sample data files pre-loaded
 - ✅ Docker containerization complete
 - ✅ Unit tests included
 - ✅ Complete documentation
+- ✅ **NEW: Delete connection with cascade cleanup**
 - ✅ Ready for production deployment
 
 ## 🎯 Getting Started (Choose One)
@@ -74,7 +75,8 @@ npm run frontend # Terminal 2 - starts on port 3000
 - 💾 **Data Storage**: Store files and extracted data with version history
 - 👥 **User Management**: Multiple user roles (Admin, Sales, Analytics, Reporting)
 - 🔄 **Batch Processing**: Process large datasets efficiently
-- 📱 **Responsive UI**: Works on desktop and tablet devices
+- �️ **Connection Management**: Create, test, and delete database connections with cascade cleanup
+- �📱 **Responsive UI**: Works on desktop and tablet devices
 - 🎨 **Modern Design**: Clean, intuitive interface with Tailwind CSS
 - 🔍 **API Browsable**: Django REST Framework browsable API
 

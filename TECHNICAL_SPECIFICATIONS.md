@@ -262,9 +262,99 @@ GET    /api/connections/         - List user's connections
 POST   /api/connections/         - Create new connection
 GET    /api/connections/{id}/    - Get connection details
 PUT    /api/connections/{id}/    - Update connection
-DELETE /api/connections/{id}/    - Delete connection
+DELETE /api/connections/{id}/    - Delete connection (with cascade)
 POST   /api/connections/{id}/test/ - Test connection
 GET    /api/connections/{id}/tables/ - Get tables list
+```
+
+#### DELETE /api/connections/{id}/ - Delete Connection with Cascade
+
+**Request:**
+```
+DELETE /api/connections/30/
+Headers:
+  Authorization: Token <user-token>
+  X-CSRFToken: <csrf-token>
+  Content-Type: application/json
+```
+
+**Response (Success - 204 No Content):**
+```
+HTTP/1.1 204 No Content
+
+(Empty body - indicates successful deletion)
+```
+
+**Response (Not Found - 404):**
+```json
+{
+  "error": "Connection not found"
+}
+```
+
+**Response (Error - 500):**
+```json
+{
+  "error": "Detailed error message"
+}
+```
+
+**Cascade Delete Behavior:**
+
+When a connection is deleted, the following cascade delete chain is triggered:
+
+1. **ExtractedData records** - All records with `connection` FK are deleted
+2. **StoredFile records** - All records with OneToOne link to deleted ExtractedData are deleted
+3. **FileShare records** - All sharing records for deleted files are deleted
+4. **Connection record** - The connection itself is deleted
+
+**Data Model Relationships:**
+```
+DatabaseConnection
+  ↓ (1-to-Many)
+ExtractedData
+  ↓ (1-to-1)
+StoredFile
+  ↓ (1-to-Many)
+FileShare
+```
+
+**CSRF Protection:**
+- DELETE requests require valid X-CSRFToken header
+- Token can be obtained from GET /api/csrf-token/
+- Prevents cross-site request forgery attacks
+
+**Permission Requirements:**
+- User must be authenticated
+- User must own the connection OR be admin
+- Non-owners cannot delete other users' connections
+
+**Error Handling:**
+- Returns 404 if connection doesn't exist or user lacks permission
+- Returns 500 with error details if deletion fails
+- Deletion is atomic - either all succeeds or all fails
+
+**Usage Example (JavaScript):**
+```javascript
+export async function deleteConnection(connectionId: number) {
+    const csrfToken = await getCsrfToken();
+    
+    const response = await fetch(`${API_URL}/connections/${connectionId}/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': csrfToken,
+        },
+    });
+    
+    if (response.status === 204) {
+        return { message: 'Connection deleted successfully' };
+    }
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete connection');
+    }
+}
 ```
 
 ### Data Extraction Endpoints

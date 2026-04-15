@@ -83,6 +83,84 @@ def login(request):
 
 ---
 
+## 🗑️ Cascade Delete: Protecting Data Integrity
+
+### Decision: Cascade Delete for Connection Removal
+
+**What We Chose:**
+```python
+# Models.py
+class ExtractedData(models.Model):
+    connection = ForeignKey(DatabaseConnection, on_delete=models.CASCADE)
+    # When connection is deleted, all ExtractedData is deleted
+
+class StoredFile(models.Model):
+    extracted_data = OneToOneField(ExtractedData, on_delete=models.CASCADE)
+    # When ExtractedData is deleted, StoredFile is deleted
+```
+
+**Why Cascade Delete?**
+
+| Approach | Pros | Cons | Use Case |
+|----------|------|------|----------|
+| **Cascade Delete** | ✅ Clean up all orphaned data, ✅ Atomic operation, ✅ Simple UI | ❌ Data loss if not careful | Connection deletion - intentional cleanup |
+| **Set to NULL** | ✅ Preserve historical data | ❌ Orphaned records, ❌ Confusing UI | Foreign key references - keep history |
+| **Soft Delete** | ✅ Data recovery possible, ✅ Audit trail | ❌ More complex queries, ❌ More storage | User accounts - might reactivate |
+| **Manual Cleanup** | ✅ Full control | ❌ User error risk, ❌ Incomplete deletions | None - always risky |
+
+**Implementation Details:**
+```python
+def destroy(self, request, pk=None):
+    """Delete connection with cascade cleanup"""
+    try:
+        connection = self.get_object()
+        connection_name = connection.name
+        
+        # Django ORM handles cascade automatically
+        # 1. Delete ExtractedData (this cascades to StoredFile)
+        ExtractedData.objects.filter(connection=connection).delete()
+        
+        # 2. Delete connection
+        connection.delete()
+        
+        return Response(
+            {"message": f"Connection '{connection_name}' and all associated data deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT
+        )
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+```
+
+**Safety Mechanisms:**
+1. **Confirmation Dialog** - Frontend shows user what will be deleted
+2. **CSRF Protection** - Prevents accidental deletion via CSRF attacks
+3. **Atomic Transaction** - Delete is all-or-nothing (no partial deletions)
+4. **Clear Warning** - UI explicitly states "This action cannot be undone"
+5. **Ownership Check** - Only owners or admins can delete
+
+**Why Not Soft Delete?**
+- Assessment focuses on active data management
+- Users can download files before deletion
+- Keeps database clean (no accumulated deleted records)
+- Simpler queries and better performance
+- When needed: Can be added later with versioning system
+
+**Audit Trail Consideration:**
+Future enhancement: Add `DeleteLog` model to track deletions:
+```python
+class DeleteLog(models.Model):
+    connection_name = CharField()
+    deleted_by = ForeignKey(User)
+    deleted_at = DateTimeField(auto_now_add=True)
+    reason = CharField(blank=True)
+    affected_files = IntegerField()  # Count of deleted files
+```
+
+---
+
 ## 🗄️ Database: SQLite for Development, Extensible Design
 
 ### Decision: SQLite for Demo + Pluggable Architecture

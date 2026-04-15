@@ -1,6 +1,8 @@
 # ✅ Assessment Delivery & Submission Guide
 
-**Status:** 🟢 **READY FOR SUBMISSION** | April 14, 2026
+**Status:** 🟢 **READY FOR SUBMISSION** | April 15, 2026
+
+**LATEST UPDATE:** Delete connection feature with cascade cleanup implemented and tested
 
 ---
 
@@ -165,11 +167,13 @@ docker-compose up
 
 ## Features
 - Multiple database connections (PostgreSQL, MySQL, MongoDB, ClickHouse)
+- Create, test, and **delete database connections** with cascade cleanup
 - Batch data extraction
 - Interactive data grid with editing
 - Data submission to backend
 - Dual storage (database + file)
 - Role-based access control
+- Secure CSRF-protected deletion with confirmation dialogs
 
 ## Project Structure
 - `frontend/` - Next.js frontend application
