@@ -448,7 +448,7 @@ cd backend
 ```bash
 # Make sure you're in backend/ directory with virtual env activated
 cd backend
-source .venv/bin/activate  # or conda activate data-connector
+source venv/bin/activate  # or conda activate data-connector
 
 # Install all Python packages
 pip install -r requirements.txt
