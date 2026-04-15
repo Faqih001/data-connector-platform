@@ -1,6 +1,6 @@
 # 📋 Data Connector Platform - Setup Guide
 
-**Last Updated:** April 15, 2026 | **Status:** ✅ Production Ready
+**Last Updated:** 14 April, 2026 | **Status:** ✅ Production Ready
 
 Complete setup instructions for the Data Connector Platform with step-by-step procedures, database configuration, Docker setup, and troubleshooting.
 
@@ -526,6 +526,115 @@ mongosh --eval "db.runCommand('ping')"
 
 # ClickHouse
 clickhouse-client --query "SELECT 1;"
+```
+
+### Start & Debug Commands for Supported Databases
+
+This section shows both host (systemd) commands and Docker Compose container commands. Run Docker commands from the project root where `docker-compose.yml` lives. Replace `<service_name>` with the actual service name from your `docker-compose.yml` (common names: `postgres`, `mysql`, `mongo`, `clickhouse`).
+
+A. Host (systemd) — run these on the host (requires sudo)
+
+- PostgreSQL (systemd)
+
+```bash
+# Start
+sudo systemctl start postgresql
+
+# Check status
+sudo systemctl status postgresql
+
+# Logs
+sudo journalctl -u postgresql -n 200 --no-pager
+
+# Run Postgres CLI
+psql -U postgres -h localhost
+```
+
+- MySQL / MariaDB (systemd)
+
+```bash
+# Start
+sudo systemctl start mysql
+
+# Check status
+sudo systemctl status mysql
+
+# Logs
+sudo journalctl -u mysql -n 200 --no-pager
+
+# Run MySQL CLI
+mysql -u root -p
+```
+
+- MongoDB (systemd)
+
+```bash
+# Start
+sudo systemctl start mongod
+
+# Check status
+sudo systemctl status mongod
+
+# Logs
+sudo journalctl -u mongod -n 200 --no-pager
+
+# Run Mongo shell
+mongosh
+```
+
+- ClickHouse (systemd)
+
+```bash
+# Start
+sudo systemctl start clickhouse-server
+
+# Check status
+sudo systemctl status clickhouse-server
+
+# Logs
+sudo journalctl -u clickhouse-server -n 200 --no-pager
+
+# Run ClickHouse client
+clickhouse-client --query "SELECT 1"
+```
+
+B. Docker Compose (containers) — run these from project root
+
+```bash
+# Start a single DB service (detached)
+docker-compose up -d <service_name>
+
+# Start all services
+docker-compose up -d
+
+# Check container status
+docker-compose ps | grep <service_name>
+
+# Follow logs for a service
+docker-compose logs -f <service_name>
+
+# Exec into a running service (bash or sh)
+docker-compose exec <service_name> bash || docker-compose exec <service_name> sh
+
+# If you need the container id and want to use docker directly
+docker ps --filter "name=<service_name>" --format "{{.ID}}  {{.Names}}"
+docker exec -it <container_id> bash
+```
+
+Examples: run DB client inside the container
+
+```bash
+# PostgreSQL (inside container)
+docker-compose exec postgres psql -U postgres -h localhost -d postgres
+
+# MySQL (inside container)
+docker-compose exec mysql mysql -u root -p
+
+# MongoDB (inside container)
+docker-compose exec mongo mongosh
+
+# ClickHouse (inside container)
+docker-compose exec clickhouse clickhouse-client --query "SELECT 1"
 ```
 
 ### Step 6: Initialize Application Database (SQLite)
@@ -1658,6 +1767,6 @@ npm run frontend
 
 ---
 
-**Last Updated:** April 15, 2026 | **Version:** 3.0 | **Status:** ✅ Production Ready
+**Last Updated:** 14 April, 2026 | **Version:** 3.0 | **Status:** ✅ Production Ready
 
 Ready to get started? Open http://localhost:3000 after completing setup! 🚀
