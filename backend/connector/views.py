@@ -1,4 +1,4 @@
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -8,6 +8,7 @@ from .models import DatabaseConnection, StoredFile, ExtractedData
 from .serializers import DatabaseConnectionSerializer, StoredFileSerializer, ExtractedDataSerializer
 from .services import extract_data_in_batches, json_to_csv
 from .permissions import IsFileOwnerOrAdmin, IsFileOwnerOrAdminForWrite
+from .connectors import get_connector
 import json
 import os
 from django.conf import settings
@@ -109,34 +110,18 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
     def get_tables(self, request, pk=None):
         """
         Get list of available tables for this connection.
-        This is now based on the StoredFile records, as we are using mock data.
-        The 'table name' is parsed from the filepath.
+        Queries the actual database using the connector to get real table names.
         """
         connection = self.get_object()
-        user = request.user
 
         try:
-            # Filter stored files by the connection and the user (or all for admin)
-            if user.is_staff or user.is_superuser:
-                files = StoredFile.objects.filter(extracted_data__connection=connection)
-            else:
-                files = StoredFile.objects.filter(extracted_data__connection=connection, user=user)
-
-            # Extract table names from filepaths
-            # e.g., /media/extraction_postgresql_users_userone_20260414103050.json -> users
-            table_names = set()
-            for f in files:
-                try:
-                    # Filename parts: extraction_{db_type}_{table_name}_{user}_{timestamp}.json
-                    filename = os.path.basename(f.filepath)
-                    parts = filename.split('_')
-                    if len(parts) >= 4 and parts[0] == 'extraction':
-                        table_names.add(parts[2])
-                except (IndexError, ValueError):
-                    # Ignore files with unexpected naming conventions
-                    continue
+            # Get connector and fetch actual tables from database
+            connector = get_connector(connection)
+            connector.connect()
+            tables = connector.get_tables()
+            connector.close()
             
-            return Response(sorted(list(table_names)), status=status.HTTP_200_OK)
+            return Response(sorted(tables), status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -570,10 +555,11 @@ def welcome(request):
     return render(request, 'welcome.html', context)
 
 
+@ensure_csrf_cookie
 @csrf_exempt
 @api_view(['POST'])
 def login_view(request):
-    """Login endpoint for session-based authentication"""
+    """Login endpoint for session-based authentication - sets CSRF cookie"""
     from django.contrib.auth import authenticate, login
     
     username = request.data.get('username')
@@ -617,9 +603,9 @@ def logout_view(request):
 
 
 @api_view(['GET'])
-@csrf_exempt
+@ensure_csrf_cookie
 def csrf_token_view(request):
-    """Get CSRF token for login"""
+    """Get CSRF token for requests - this ensures the cookie is set"""
     from django.middleware.csrf import get_token
     token = get_token(request)
     return Response({"csrfToken": token}, status=status.HTTP_200_OK)

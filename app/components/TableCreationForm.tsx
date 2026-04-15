@@ -73,7 +73,7 @@ ORDER BY id;`;
       setSqlStatement('');
       setIsExpanded(false);
       
-      toast.success(`✅ Table "${tableName}" created successfully!`);
+      toast.success(`Table "${tableName}" created successfully!`);
       if (onTableCreated) {
         onTableCreated();
       }

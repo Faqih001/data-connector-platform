@@ -6,6 +6,7 @@ import { DataGrid } from "./components/DataGrid";
 import { ConnectionForm } from "./components/ConnectionForm";
 import { FileViewer } from "./components/FileViewer";
 import { TableCreationForm } from "./components/TableCreationForm";
+import { Loader } from "./components/Loader";
 import { useToast } from "./components/ToastContext";
 import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData } from "./lib/api";
 import { DatabaseConnection, StoredFile } from "./types";
@@ -17,6 +18,7 @@ export default function Home() {
   const toast = useToast();
   
   // All state declarations - MUST come first
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loginUsername, setLoginUsername] = useState("");
@@ -55,6 +57,8 @@ export default function Home() {
         }
       } catch (err) {
         console.log('Not logged in');
+      } finally {
+        setIsCheckingAuth(false);
       }
     }
     checkAuth();
@@ -85,14 +89,14 @@ export default function Home() {
 
   // Fetch tables when connection is selected
   useEffect(() => {
-    if (selectedConnection) {
+    if (selectedConnection && isLoggedIn) {
       const fetchTablesForConnection = async () => {
         try {
           const tables = await getTables(selectedConnection.id);
           setAvailableTables(tables);
           setTableName(""); // Reset table name when connection changes
         } catch (err) {
-          console.error("Failed to fetch tables:", err);
+          console.error("Failed to fetch tables for connection:", selectedConnection.name, err);
           setAvailableTables([]);
         }
       };
@@ -101,7 +105,7 @@ export default function Home() {
       setAvailableTables([]);
       setTableName("");
     }
-  }, [selectedConnection]);
+  }, [selectedConnection, isLoggedIn]);
 
   // Fetch data when table name changes
   useEffect(() => {
@@ -218,11 +222,11 @@ export default function Home() {
       setError(null);
       const newConnection = await createConnection(connection);
       setConnections([...connections, newConnection]);
-      toast.success(`✅ Connection "${newConnection.name}" created successfully!`);
+      toast.success(`Connection "${newConnection.name}" created successfully!`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to create connection";
       setError(errorMessage);
-      toast.error(`❌ ${errorMessage}`);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -250,6 +254,11 @@ export default function Home() {
   };
 
   // Conditional rendering - MUST come last
+  // Show loader while checking authentication
+  if (isCheckingAuth) {
+    return <Loader fullScreen message="Loading..." />;
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4 sm:p-6">
@@ -465,13 +474,17 @@ export default function Home() {
             </div>
 
             {/* Extracted Data Grid */}
-            <div className="p-4 border rounded-lg bg-white shadow-sm">
+            <div className="p-4 border rounded-lg bg-white shadow-sm relative">
               <h2 className="text-base sm:text-lg font-bold mb-4">📊 Extracted Data</h2>
-              <DataGrid
-                columns={columns}
-                data={data}
-                onSave={handleSaveData}
-              />
+              {isLoading ? (
+                <Loader fullScreen={false} size="md" message="Loading data..." />
+              ) : (
+                <DataGrid
+                  columns={columns}
+                  data={data}
+                  onSave={handleSaveData}
+                />
+              )}
             </div>
           </div>
         </div>
