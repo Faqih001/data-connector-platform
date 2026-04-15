@@ -487,15 +487,26 @@ These appear in the **bottom right** and auto-dismiss after 4 seconds.
 ## 🔌 Page 2: API Connections (Port 8001)
 
 ### Overview
-**Technical Interface** for developers and technical users.
+**Technical Interface** for developers and technical users to interact with database connections via REST API.
 
 **URL:** http://localhost:8001/api/connections/
+
+### Features Available on This Page:
+- ✅ **View all connections** - Display all database connections in JSON format
+- ✅ **Create new connection** - POST form to add new connections
+- ✅ **View connection details** - Drill into individual connection records
+- ✅ **Edit connections** - PUT endpoint to modify existing connections
+- ✅ **Delete connections** - Remove connections with cascade delete
+- ✅ **Test connections** - Verify connectivity before saving
+- ✅ **List tables** - View available tables in each connection
 
 ### What This Shows:
 - All database connections in **JSON format**
 - Connection details (host, port, username, database name)
-- Passwords are **encrypted** (for security)
+- Passwords are **encrypted** (for security - encrypted_token format)
 - Stored server-side
+- User ownership and timestamps
+- Staff flag and permission status
 
 ### JSON Response Example:
 ```json
@@ -509,42 +520,99 @@ These appear in the **bottom right** and auto-dismiss after 4 seconds.
     "username": "user",
     "password": "gAAAAABp3MwT...[encrypted]...==",
     "database_name": "dataconnector",
+    "is_staff": true,
+    "user": 1,
     "created_at": "2026-04-13T10:57:23.083816Z"
   }
 ]
 ```
 
-### How to Use This Page:
-1. **View connections:** Scroll to see all existing connections
-2. **Create new connection:** Scroll to bottom, fill form with:
-   - Name
-   - Database type
-   - Host
-   - Port
-   - Username
-   - Password
-   - Database name
-3. Click **POST** button to create
+### HTTP Methods Supported:
+- **GET** - Retrieve all connections or a specific connection
+- **POST** - Create a new database connection
+- **PUT** - Update an existing connection
+- **DELETE** - Remove a connection (with cascade delete)
+- **OPTIONS** - View allowed methods and schema
+
+### How to Use This Page - Creating a Connection via API:
+
+1. **Via Django REST Form (GUI):**
+   - Click **POST** button at the top right
+   - Fill in all required fields:
+     - **Name:** "My Database Connection"
+     - **Database Type:** postgresql | mysql | mongodb | clickhouse
+     - **Host:** Database server address
+     - **Port:** Database port number
+     - **Username:** Database user
+     - **Password:** Database password
+     - **Database Name:** Database name
+   - Click **POST** button to submit
+
+2. **Via cURL (Command Line):**
+   ```bash
+   curl -X POST http://localhost:8001/api/connections/ \
+     -H "Authorization: Token <your-token>" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "My PostgreSQL",
+       "db_type": "postgresql",
+       "host": "localhost",
+       "port": 5432,
+       "username": "postgres",
+       "password": "password",
+       "database_name": "mydb"
+     }'
+   ```
+
+3. **Response:** 201 Created with connection ID and encrypted password
+
+### Database Types Supported:
+| Type | Default Port | Example Host |
+|------|--------------|--------------|
+| **postgresql** | 5432 | localhost |
+| **mysql** | 3306 | db.example.com |
+| **mongodb** | 27017 | mongodb+srv://user:pass@cluster.mongodb.net |
+| **clickhouse** | 8123 | ch.example.com |
 
 ### Who Should Use This?
-- 👨‍💻 Backend developers
-- 📊 System administrators
-- 🔧 Database engineers
+- 👨‍💻 Backend developers (API integration)
+- 🔧 Database engineers (mass operations)
+- 📊 System administrators (scripting & automation)
+- 🤖 CI/CD pipelines (automated deployment)
+
+### Security Notes:
+- ✅ Passwords are encrypted before storage
+- ✅ Only authenticated users can access
+- ✅ CSRF protection on POST/PUT/DELETE
+- ✅ User-based access control (see own connections)
+- ⚠️ Never share API tokens in logs or version control
 
 ---
 
 ## 📁 Page 3: API Files (Port 8001)
 
 ### Overview
-**Data Files API** - Shows all extracted data stored in the system.
+**Data Files API** - Technical interface to access extracted data files and manage file sharing.
 
 **URL:** http://localhost:8001/api/files/
+
+### Features Available on This Page:
+- ✅ **List all files** - View extracted data files with metadata
+- ✅ **View file details** - Get specific file information
+- ✅ **Download files** - Retrieve file content (JSON/CSV)
+- ✅ **Share files** - Grant access to other users
+- ✅ **Unshare files** - Revoke access from users
+- ✅ **Delete files** - Soft delete or permanent delete
+- ✅ **Restore files** - Recover from trash
+- ✅ **Filter & sort** - Query files by date, table, or connection
 
 ### What This Shows:
 - All extracted data files
 - File metadata (owner, format, timestamps)
 - Shared access information
 - File paths and locations
+- File sizes and data counts
+- Extraction source (connection & table)
 
 ### JSON Response Example:
 ```json
@@ -579,10 +647,87 @@ These appear in the **bottom right** and auto-dismiss after 4 seconds.
 - **Download:** In JSON or CSV format
 - **Create:** Add new file records
 
+### HTTP Methods Supported:
+- **GET** - Retrieve all files or a specific file
+- **POST** - Upload or create new file record
+- **PUT** - Update file metadata or sharing settings
+- **DELETE** - Soft delete or permanently remove files
+- **OPTIONS** - View allowed methods and schema
+
+### Available File Operations via API:
+
+**1. Download File:**
+```
+GET /api/files/{id}/download/
+Response: File content (JSON/CSV) with appropriate headers
+```
+
+**2. Share File with Users:**
+```
+POST /api/files/{id}/share/
+Body: {
+  "user_ids": [2, 3, 4]
+}
+Response: 200 OK with updated shared_with list
+```
+
+**3. Unshare File from Users:**
+```
+POST /api/files/{id}/unshare/
+Body: {
+  "user_ids": [2, 3]
+}
+Response: 200 OK with updated shared_with list
+```
+
+**4. Delete File:**
+```
+DELETE /api/files/{id}/
+Response: 204 No Content (soft delete)
+```
+
+**5. Restore Deleted File:**
+```
+POST /api/files/{id}/restore/
+Response: 200 OK with restored file data
+```
+
+### Query Parameters for Filtering:
+```
+GET /api/files/?format_type=json&table_name=users&connection_id=1
+GET /api/files/?created_after=2026-04-01&created_before=2026-04-30
+GET /api/files/?shared_only=true
+GET /api/files/?search=keyword
+```
+
+### File Metadata Fields:
+| Field | Description | Type |
+|-------|-------------|------|
+| **id** | Unique file identifier | Integer |
+| **user** | File owner information | Object |
+| **filename** | Original name | String |
+| **extracted_data** | Number of records | Integer |
+| **filepath** | Server path | String |
+| **format_type** | json or csv | String |
+| **shared_with** | Users with access | Array |
+| **table_name** | Source table | String |
+| **connection_name** | Source connection | String |
+| **created_at** | Creation timestamp | DateTime |
+| **updated_at** | Last modified | DateTime |
+
 ### Who Should Use This?
-- 👨‍💻 Backend developers
+- 👨‍💻 Backend developers (API integration)
 - 📊 Data analysts needing raw API access
-- 🔧 System integrators
+- 🔧 System integrators (automated workflows)
+- 🤖 CI/CD pipelines (file automation)
+
+### Security Notes:
+- ✅ User-based access control (see own & shared files)
+- ✅ CSRF protection on POST/PUT/DELETE
+- ✅ Token-based authentication required
+- ✅ File sharing is granular (per user)
+- ⚠️ Soft delete preserves data; use restore if needed
+- ⚠️ Sharing creates user permissions immediately
 
 ---
 

@@ -267,7 +267,585 @@ POST   /api/connections/{id}/test/ - Test connection
 GET    /api/connections/{id}/tables/ - Get tables list
 ```
 
-#### DELETE /api/connections/{id}/ - Delete Connection with Cascade
+#### GET /api/connections/ - List User's Connections
+
+**Request:**
+```
+GET /api/connections/
+Headers:
+  Authorization: Token <user-token>
+```
+
+**Response (Success - 200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "user": 1,
+    "name": "Production DB",
+    "db_type": "postgresql",
+    "host": "db.example.com",
+    "port": 5432,
+    "username": "dbuser",
+    "password": "<encrypted>",
+    "database_name": "main_db",
+    "is_staff": true,
+    "created_at": "2026-04-14T10:00:00Z"
+  },
+  {
+    "id": 2,
+    "user": 1,
+    "name": "Analytics MySQL",
+    "db_type": "mysql",
+    "host": "analytics.local",
+    "port": 3306,
+    "username": "analytics_user",
+    "password": "<encrypted>",
+    "database_name": "analytics_db",
+    "is_staff": true,
+    "created_at": "2026-04-13T15:30:00Z"
+  }
+]
+```
+
+#### POST /api/connections/ - Create New Connection
+
+**Request:**
+```
+POST /api/connections/
+Headers:
+  Authorization: Token <user-token>
+  X-CSRFToken: <csrf-token>
+  Content-Type: application/json
+
+Body:
+{
+  "name": "My PostgreSQL Server",
+  "db_type": "postgresql",
+  "host": "localhost",
+  "port": 5432,
+  "username": "postgres",
+  "password": "password123",
+  "database_name": "mydb"
+}
+```
+
+**Alternative Database Types:**
+```json
+{
+  "name": "MySQL Server",
+  "db_type": "mysql",
+  "host": "localhost",
+  "port": 3306,
+  "username": "root",
+  "password": "password",
+  "database_name": "testdb"
+}
+```
+
+```json
+{
+  "name": "MongoDB Atlas",
+  "db_type": "mongodb",
+  "host": "mongodb+srv://user:pass@cluster.mongodb.net",
+  "port": 27017,
+  "username": "mongouser",
+  "password": "mongopass",
+  "database_name": "mongodb_name"
+}
+```
+
+```json
+{
+  "name": "ClickHouse Server",
+  "db_type": "clickhouse",
+  "host": "localhost",
+  "port": 8123,
+  "username": "default",
+  "password": "default",
+  "database_name": "default"
+}
+```
+
+**Response (Success - 201 Created):**
+```json
+{
+  "id": 50,
+  "user": 1,
+  "name": "My PostgreSQL Server",
+  "db_type": "postgresql",
+  "host": "localhost",
+  "port": 5432,
+  "username": "postgres",
+  "password": "<encrypted-token>",
+  "database_name": "mydb",
+  "is_staff": true,
+  "created_at": "2026-04-15T10:00:00Z"
+}
+```
+
+**Response (Validation Error - 400):**
+```json
+{
+  "name": ["This field may not be blank."],
+  "db_type": ["Invalid database type. Choices: postgresql, mysql, mongodb, clickhouse"]
+}
+```
+
+**Response (Duplicate Name - 400):**
+```json
+{
+  "error": "Connection with this name already exists"
+}
+```
+
+**Response (Authentication Error - 401):**
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+#### GET /api/connections/{id}/ - Get Connection Details
+
+**Request:**
+```
+GET /api/connections/50/
+Headers:
+  Authorization: Token <user-token>
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "id": 50,
+  "user": 1,
+  "name": "My PostgreSQL Server",
+  "db_type": "postgresql",
+  "host": "localhost",
+  "port": 5432,
+  "username": "postgres",
+  "password": "<encrypted>",
+  "database_name": "mydb",
+  "is_staff": true,
+  "created_at": "2026-04-15T10:00:00Z"
+}
+```
+
+**Response (Not Found - 404):**
+```json
+{
+  "detail": "Not found."
+}
+```
+
+**Response (Permission Denied - 403):**
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+#### PUT /api/connections/{id}/ - Update Connection
+
+**Request:**
+```
+PUT /api/connections/50/
+Headers:
+  Authorization: Token <user-token>
+  X-CSRFToken: <csrf-token>
+  Content-Type: application/json
+
+Body:
+{
+  "name": "Updated PostgreSQL",
+  "host": "new-host.example.com",
+  "port": 5433,
+  "username": "newuser",
+  "password": "newpassword",
+  "database_name": "updated_db"
+}
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "id": 50,
+  "user": 1,
+  "name": "Updated PostgreSQL",
+  "db_type": "postgresql",
+  "host": "new-host.example.com",
+  "port": 5433,
+  "username": "newuser",
+  "password": "<encrypted>",
+  "database_name": "updated_db",
+  "is_staff": true,
+  "created_at": "2026-04-15T10:00:00Z"
+}
+```
+
+#### POST /api/connections/{id}/test/ - Test Connection
+
+**Request:**
+```
+POST /api/connections/50/test/
+Headers:
+  Authorization: Token <user-token>
+  X-CSRFToken: <csrf-token>
+  Content-Type: application/json
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "status": "success",
+  "message": "Connection valid",
+  "database": "mydb",
+  "version": "PostgreSQL 14.5"
+}
+```
+
+**Response (Connection Failed - 400):**
+```json
+{
+  "status": "error",
+  "message": "Connection refused: Unable to connect to host 'invalid-host.com'"
+}
+```
+
+**Response (Authentication Failed - 400):**
+```json
+{
+  "status": "error",
+  "message": "Authentication failed: Invalid username or password"
+}
+```
+
+#### GET /api/connections/{id}/tables/ - Get Available Tables
+
+**Request:**
+```
+GET /api/connections/50/tables/
+Headers:
+  Authorization: Token <user-token>
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "tables": [
+    "users",
+    "products",
+    "orders",
+    "customers",
+    "invoices"
+  ],
+  "count": 5,
+  "database": "mydb"
+}
+```
+
+**Response (No Tables - 200 OK):**
+```json
+{
+  "tables": [],
+  "count": 0,
+  "database": "mydb"
+}
+```
+
+---
+
+#### GET /api/connections/ - List User's Connections
+
+**Request:**
+```
+GET /api/connections/
+Headers:
+  Authorization: Token <user-token>
+```
+
+**Response (Success - 200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "user": 1,
+    "name": "Production DB",
+    "db_type": "postgresql",
+    "host": "db.example.com",
+    "port": 5432,
+    "username": "dbuser",
+    "password": "<encrypted>",
+    "database_name": "main_db",
+    "is_staff": true,
+    "created_at": "2026-04-14T10:00:00Z"
+  },
+  {
+    "id": 2,
+    "user": 1,
+    "name": "Analytics MySQL",
+    "db_type": "mysql",
+    "host": "analytics.local",
+    "port": 3306,
+    "username": "analytics_user",
+    "password": "<encrypted>",
+    "database_name": "analytics_db",
+    "is_staff": true,
+    "created_at": "2026-04-13T15:30:00Z"
+  }
+]
+```
+
+#### POST /api/connections/ - Create New Connection
+
+**Request:**
+```
+POST /api/connections/
+Headers:
+  Authorization: Token <user-token>
+  X-CSRFToken: <csrf-token>
+  Content-Type: application/json
+
+Body:
+{
+  "name": "My PostgreSQL Server",
+  "db_type": "postgresql",
+  "host": "localhost",
+  "port": 5432,
+  "username": "postgres",
+  "password": "password123",
+  "database_name": "mydb"
+}
+```
+
+**Alternative Database Types:**
+```json
+{
+  "name": "MySQL Server",
+  "db_type": "mysql",
+  "host": "localhost",
+  "port": 3306,
+  "username": "root",
+  "password": "password",
+  "database_name": "testdb"
+}
+```
+
+```json
+{
+  "name": "MongoDB Atlas",
+  "db_type": "mongodb",
+  "host": "mongodb+srv://user:pass@cluster.mongodb.net",
+  "port": 27017,
+  "username": "mongouser",
+  "password": "mongopass",
+  "database_name": "mongodb_name"
+}
+```
+
+```json
+{
+  "name": "ClickHouse Server",
+  "db_type": "clickhouse",
+  "host": "localhost",
+  "port": 8123,
+  "username": "default",
+  "password": "default",
+  "database_name": "default"
+}
+```
+
+**Response (Success - 201 Created):**
+```json
+{
+  "id": 50,
+  "user": 1,
+  "name": "My PostgreSQL Server",
+  "db_type": "postgresql",
+  "host": "localhost",
+  "port": 5432,
+  "username": "postgres",
+  "password": "<encrypted-token>",
+  "database_name": "mydb",
+  "is_staff": true,
+  "created_at": "2026-04-15T10:00:00Z"
+}
+```
+
+**Response (Validation Error - 400):**
+```json
+{
+  "name": ["This field may not be blank."],
+  "db_type": ["Invalid database type. Choices: postgresql, mysql, mongodb, clickhouse"]
+}
+```
+
+**Response (Duplicate Name - 400):**
+```json
+{
+  "error": "Connection with this name already exists"
+}
+```
+
+**Response (Authentication Error - 401):**
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+#### GET /api/connections/{id}/ - Get Connection Details
+
+**Request:**
+```
+GET /api/connections/50/
+Headers:
+  Authorization: Token <user-token>
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "id": 50,
+  "user": 1,
+  "name": "My PostgreSQL Server",
+  "db_type": "postgresql",
+  "host": "localhost",
+  "port": 5432,
+  "username": "postgres",
+  "password": "<encrypted>",
+  "database_name": "mydb",
+  "is_staff": true,
+  "created_at": "2026-04-15T10:00:00Z"
+}
+```
+
+**Response (Not Found - 404):**
+```json
+{
+  "detail": "Not found."
+}
+```
+
+**Response (Permission Denied - 403):**
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+#### PUT /api/connections/{id}/ - Update Connection
+
+**Request:**
+```
+PUT /api/connections/50/
+Headers:
+  Authorization: Token <user-token>
+  X-CSRFToken: <csrf-token>
+  Content-Type: application/json
+
+Body:
+{
+  "name": "Updated PostgreSQL",
+  "host": "new-host.example.com",
+  "port": 5433,
+  "username": "newuser",
+  "password": "newpassword",
+  "database_name": "updated_db"
+}
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "id": 50,
+  "user": 1,
+  "name": "Updated PostgreSQL",
+  "db_type": "postgresql",
+  "host": "new-host.example.com",
+  "port": 5433,
+  "username": "newuser",
+  "password": "<encrypted>",
+  "database_name": "updated_db",
+  "is_staff": true,
+  "created_at": "2026-04-15T10:00:00Z"
+}
+```
+
+#### POST /api/connections/{id}/test/ - Test Connection
+
+**Request:**
+```
+POST /api/connections/50/test/
+Headers:
+  Authorization: Token <user-token>
+  X-CSRFToken: <csrf-token>
+  Content-Type: application/json
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "status": "success",
+  "message": "Connection valid",
+  "database": "mydb",
+  "version": "PostgreSQL 14.5"
+}
+```
+
+**Response (Connection Failed - 400):**
+```json
+{
+  "status": "error",
+  "message": "Connection refused: Unable to connect to host 'invalid-host.com'"
+}
+```
+
+**Response (Authentication Failed - 400):**
+```json
+{
+  "status": "error",
+  "message": "Authentication failed: Invalid username or password"
+}
+```
+
+#### GET /api/connections/{id}/tables/ - Get Available Tables
+
+**Request:**
+```
+GET /api/connections/50/tables/
+Headers:
+  Authorization: Token <user-token>
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "tables": [
+    "users",
+    "products",
+    "orders",
+    "customers",
+    "invoices"
+  ],
+  "count": 5,
+  "database": "mydb"
+}
+```
+
+**Response (No Tables - 200 OK):**
+```json
+{
+  "tables": [],
+  "count": 0,
+  "database": "mydb"
+}
+```
+
+---
+
+#### DELETE /api/connections/{id}/ - Delete Connection
 
 **Request:**
 ```
