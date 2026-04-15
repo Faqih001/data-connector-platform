@@ -187,7 +187,6 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
             # Execute the CREATE TABLE statement
             if connection.db_type == 'mongodb':
                 # MongoDB doesn't need explicit table creation
-                connector.close()
                 return Response(
                     {"message": f"MongoDB collection will be created on first insert"},
                     status=status.HTTP_200_OK

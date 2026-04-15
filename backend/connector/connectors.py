@@ -118,13 +118,24 @@ class ClickHouseConnector(BaseConnector):
     def connect(self):
         # Use decrypted_password property if available (from Django model)
         password = getattr(self.connection_details, 'decrypted_password', self.connection_details.password)
-        self.connection = Client(
-            host=self.connection_details.host,
-            port=self.connection_details.port,
-            user=self.connection_details.username,
-            password=password,
-            database=self.connection_details.database_name,
-        )
+        
+        # ClickHouse client connection kwargs
+        connect_kwargs = {
+            'host': self.connection_details.host,
+            'port': self.connection_details.port,
+            'user': self.connection_details.username,
+            'database': self.connection_details.database_name,
+        }
+        
+        # Only add password if it's not empty
+        if password:
+            connect_kwargs['password'] = password
+        
+        self.connection = Client(**connect_kwargs)
+
+    def close(self):
+        # ClickHouse Client doesn't have a close() method, but we keep this for consistency
+        pass
 
     def fetch_batch(self, table_name, batch_size, offset):
         return self.connection.execute(f"SELECT * FROM {table_name} LIMIT {batch_size} OFFSET {offset}", with_column_types=True)
