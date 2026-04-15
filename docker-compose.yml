@@ -16,7 +16,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    command: ["./wait-for-it.sh", "db", "--", "python", "manage.py", "runserver", "0.0.0.0:8000"]
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./backend:/app
     ports:
@@ -26,7 +26,14 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings
     depends_on:
-      - db
+      db:
+        condition: service_started
+      mysql:
+        condition: service_started
+      mongo:
+        condition: service_started
+      clickhouse:
+        condition: service_started
     networks:
       - app-network
 

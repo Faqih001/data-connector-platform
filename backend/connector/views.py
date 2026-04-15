@@ -141,6 +141,80 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['post'])
+    def create_table(self, request, pk=None):
+        """
+        Create a table in the connected database by executing SQL statement.
+        Requires SQL statement in request body.
+        """
+        connection = self.get_object()
+        sql_statement = request.data.get('sql_statement', '').strip()
+        
+        if not sql_statement:
+            return Response(
+                {"error": "sql_statement is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate that it's a CREATE TABLE statement (basic security)
+        sql_upper = sql_statement.upper().strip()
+        if not sql_upper.startswith('CREATE TABLE'):
+            return Response(
+                {"error": "Only CREATE TABLE statements are allowed"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from .connectors import PostgresConnector, MySQLConnector, MongoConnector, ClickHouseConnector
+            
+            connector_map = {
+                'postgresql': PostgresConnector,
+                'mysql': MySQLConnector,
+                'mongodb': MongoConnector,
+                'clickhouse': ClickHouseConnector,
+            }
+            
+            ConnectorClass = connector_map.get(connection.db_type)
+            if not ConnectorClass:
+                return Response(
+                    {"error": f"Unsupported database type: {connection.db_type}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            connector = ConnectorClass(connection)
+            connector.connect()
+            
+            # Execute the CREATE TABLE statement
+            if connection.db_type == 'mongodb':
+                # MongoDB doesn't need explicit table creation
+                connector.close()
+                return Response(
+                    {"message": f"MongoDB collection will be created on first insert"},
+                    status=status.HTTP_200_OK
+                )
+            elif connection.db_type == 'clickhouse':
+                # ClickHouse uses execute() directly on the client
+                connector.connection.execute(sql_statement)
+            else:  # PostgreSQL, MySQL
+                cursor = connector.connection.cursor()
+                cursor.execute(sql_statement)
+                connector.connection.commit()
+            
+            connector.close()
+            
+            return Response(
+                {"message": f"Table created successfully", "sql": sql_statement},
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class StoredFileViewSet(viewsets.ModelViewSet):
     queryset = StoredFile.objects.all()
     serializer_class = StoredFileSerializer

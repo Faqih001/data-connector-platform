@@ -211,3 +211,31 @@ export async function updateExtractedData(id: number, data: any): Promise<any> {
         throw error;
     }
 }
+
+export async function createTable(connectionId: number, sqlStatement: string): Promise<any> {
+    const csrfToken = await getCsrfToken();
+    
+    const response = await fetch(`${API_URL}/connections/${connectionId}/create_table/`, {
+        ...fetchOptions,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ sql_statement: sqlStatement }),
+    });
+    
+    if (!response.ok) {
+        try {
+            const errorData = await response.json();
+            throw new Error(errorData.error || errorData.detail || 'Failed to create table');
+        } catch (e) {
+            if (e instanceof Error && e.message !== 'Failed to create table') {
+                throw e;
+            }
+            throw new Error('Failed to create table');
+        }
+    }
+    
+    return response.json();
+}

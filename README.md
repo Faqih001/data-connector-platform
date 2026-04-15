@@ -161,17 +161,132 @@ This design follows the Strategy pattern, making the system modular and easy to 
 ### Quick Setup (Recommended)
 See **[SETUP.md](SETUP.md)** for complete, step-by-step instructions.
 
-### Docker Setup (Alternative)
-1.  **Clone the repository**:
-    ```bash
-    git clone <repository-url>
-    cd data-connector-platform
-    ```
-2.  **Build and run with Docker**:
-    ```bash
-    docker-compose up --build
-    ```
-    The frontend will be available at `http://localhost:3000` and the backend at `http://localhost:8001`.
+---
+
+## 🗄️ Database Management
+
+This project uses Docker Compose to manage four databases: PostgreSQL, MySQL, MongoDB, and ClickHouse. All databases can be started, stopped, and restarted easily with simple commands.
+
+### 🚀 Starting All Databases
+
+**First time setup:**
+```bash
+cd /path/to/data-connector-platform
+docker-compose up -d
+```
+
+**Result:**
+- ✅ PostgreSQL running on port 5433 (mapped from 5432)
+- ✅ MySQL running on port 3307 (mapped from 3306)
+- ✅ MongoDB running on port 27018 (mapped from 27017)
+- ✅ ClickHouse running on ports 8124 (HTTP) and 9001 (native)
+
+### 🔄 Restarting All Databases
+
+```bash
+# Stop all containers
+docker-compose down
+
+# Start all containers again
+docker-compose up -d
+```
+
+**For a clean restart (removes data volumes):**
+```bash
+docker-compose down -v
+docker-compose up -d
+```
+
+### 🛑 Stopping All Databases
+
+```bash
+docker-compose down
+```
+
+Containers are stopped and removed, but data persists in Docker volumes.
+
+### 📊 Checking Database Status
+
+```bash
+# View all container statuses
+docker-compose ps
+
+# View real-time logs from all containers
+docker-compose logs -f
+
+# View logs from specific database
+docker-compose logs -f db        # PostgreSQL
+docker-compose logs -f mysql     # MySQL
+docker-compose logs -f mongo     # MongoDB
+docker-compose logs -f clickhouse # ClickHouse
+```
+
+### 🔍 Database Connection Details
+
+| Database | Host | Port | Username | Password | Database |
+|----------|------|------|----------|----------|----------|
+| PostgreSQL | localhost | 5433 | user | password | dataconnector |
+| MySQL | localhost | 3307 | user | password | testdb |
+| MongoDB | localhost | 27018 | - | - | - |
+| ClickHouse | localhost | 9001 | default | - | default |
+
+### 💾 Data Persistence
+
+- Data is stored in Docker volumes and persists even when containers are stopped
+- Use `docker-compose down -v` to delete all data volumes
+- Use `docker volume ls` to see all volumes
+
+### 🧹 Cleanup Commands
+
+```bash
+# Remove stopped containers
+docker-compose rm
+
+# Remove all unused Docker resources (warning: affects all projects)
+docker system prune -f
+
+# Remove unused volumes (warning: will delete data)
+docker volume prune -f
+
+# Force stop a stuck container
+docker kill <container_name>
+```
+
+### 🐛 Troubleshooting
+
+**Containers won't start:**
+```bash
+# Check for errors
+docker-compose logs
+
+# Try a clean restart
+docker-compose down -v
+docker-compose up -d --build
+```
+
+**Port conflicts (ports already in use):**
+Edit `docker-compose.yml` and change the port mappings, e.g.:
+```yaml
+ports:
+  - "5435:5432"  # Changed from 5433:5432
+```
+
+**Docker daemon not running:**
+```bash
+# On Linux
+sudo systemctl start docker
+
+# On macOS/Windows
+# Restart Docker Desktop from applications
+```
+
+---
+
+## 🏗️ Manual Database Setup (Without Docker)
+
+If you prefer not to use Docker, see **[SETUP.md](SETUP.md)** for manual installation instructions.
+
+---
 
 ## API Documentation
 

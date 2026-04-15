@@ -5,6 +5,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataGrid } from "./components/DataGrid";
 import { ConnectionForm } from "./components/ConnectionForm";
 import { FileViewer } from "./components/FileViewer";
+import { TableCreationForm } from "./components/TableCreationForm";
 import { useToast } from "./components/ToastContext";
 import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData } from "./lib/api";
 import { DatabaseConnection, StoredFile } from "./types";
@@ -416,6 +417,27 @@ export default function Home() {
                 ))}
               </select>
             </div>
+
+            {/* Table Creation Section - Show when no tables exist */}
+            {selectedConnection && availableTables.length === 0 && (
+              <TableCreationForm 
+                connection={selectedConnection}
+                onTableCreated={() => {
+                  // Reload tables after creation
+                  if (selectedConnection) {
+                    const fetchTablesForConnection = async () => {
+                      try {
+                        const tables = await getTables(selectedConnection.id);
+                        setAvailableTables(tables);
+                      } catch (err) {
+                        console.error("Failed to refresh tables:", err);
+                      }
+                    };
+                    fetchTablesForConnection();
+                  }
+                }}
+              />
+            )}
 
             {/* Extract Data Section */}
             <div className="p-4 border rounded-lg bg-white shadow-sm">
