@@ -250,54 +250,38 @@ This is the **PRIMARY USER INTERFACE** - Most users will spend their time here.
 1. In the **Connections** dropdown
 2. Select the connection you just created
 3. The connection is now active for data extraction
-4. Available tables from that connection load automatically
 
-#### Step 3: Create or Manage Tables (Optional)
+#### Step 2b (Optional): Manage Tables for Connection
+When you select a connection:
 
-**Note:** This step is optional. Skip if tables already exist in your connection.
+**If the connection has NO TABLES:**
+1. A blue section appears: **"📋 Create New Table"** with a "No tables found" indicator
+2. Click **Show** to expand the table creation form
+3. Fill in:
+   - **Table Name:** Name for your new table
+   - **SQL Statement:** The CREATE TABLE SQL command for your database type
+   - Database-specific templates are provided (PostgreSQL, MySQL, ClickHouse, etc.)
+4. Click **Create** button
+5. 🟢 **Green success notification:** "Table '{tableName}' created successfully!"
+6. The form hides automatically
+7. The new table appears in the Table Name dropdown
 
-##### Creating a New Table
-1. Look for the **📋 Create New Table** section (appears in light blue box)
-2. Click **Show** to expand the form
-3. Fill in the form:
-   - **Table Name:** Enter a name for your new table (e.g., "customers", "products")
-   - **SQL Statement:** Enter your CREATE TABLE SQL statement
-     - Pre-filled templates available for each database type
-     - Click **Use Template** to auto-fill sample SQL
-4. Click **Create Table** button
-5. ✅ **Green success notification appears:** `"Table 'table_name' created successfully!"`
-6. Table is immediately available in the dropdown
+**If the connection HAS TABLES:**
+1. Tables are listed in the **Table Name** dropdown in the Extract Data section
+2. To **delete a table:**
+   - Select the table from the dropdown
+   - Click the red **Delete** button next to it
+   - ✅ Table is permanently removed from the database
+   - 🟢 **Green success notification:** "Table deleted successfully!"
 
-**Database-Specific SQL Examples:**
-- **PostgreSQL:** `CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255))`
-- **MySQL:** `CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))`
-- **MongoDB:** Collections auto-create on first insert
-- **ClickHouse:** `CREATE TABLE users (id UInt32, name String) ENGINE = MergeTree() ORDER BY id`
+**Key Points:**
+- 🟢 **Green notifications** appear for successful table operations
+- 🔴 **Red error messages** if table creation fails (e.g., syntax error)
+- The "No tables found" indicator helps you quickly see if a connection needs tables
+- Table operations are database-specific (SQL varies by database type)
+- Deleted tables cannot be recovered
 
-##### Deleting a Table
-1. Select the table you want to delete from the **Table Name** dropdown
-2. Click the red **Delete** button next to the dropdown
-3. A browser confirmation dialog appears:
-   ```
-   "Are you sure you want to delete the table 'table_name'? This action cannot be undone."
-   ```
-4. Click **OK** to confirm (or **Cancel** to keep the table)
-5. ✅ **Green success notification appears:** `"Table 'table_name' deleted successfully!"`
-6. Table is immediately removed from the dropdown
-7. Any extracted data from that table is cleared from the grid
-
-**Table Management Notifications:**
-
-| Action | Notification | Color | Duration |
-|--------|--------------|-------|----------|
-| Create table success | ✅ Table 'name' created successfully! | Green | 4 seconds |
-| Create table error | ❌ Failed to create table: [error details] | Red | 4 seconds |
-| Delete table success | ✅ Table 'name' deleted successfully! | Green | 4 seconds |
-| Delete table error | ❌ Failed to delete table: [error details] | Red | 4 seconds |
-
-**⚠️ WARNING:** Deleting a table is **PERMANENT**. All data in that table will be lost. Download any critical data before deleting.
-
-#### Step 4: Extract Data
+#### Step 3: Extract Data
 1. In the **RIGHT PANEL** → **Extract Data** section
 2. Fill in:
    - **Table Name:** The database table to extract from
@@ -373,11 +357,29 @@ The system shows **colored toast notifications** for feedback:
 | Color | Meaning | Example |
 |-------|---------|---------|
 | 🟢 **Green** | Success | File shared successfully! |
+| � **Green** | Success | Table 'users' created successfully! |
+| 🟢 **Green** | Success | Table deleted successfully! |
+| 🟢 **Green** | Success | Connection 'My DB' deleted successfully! |
 | 🔴 **Red** | Error | Failed to extract data |
+| 🔴 **Red** | Error | Failed to create table: Syntax error |
+| 🔴 **Red** | Error | Failed to delete table |
 | 🔵 **Blue** | Info | Operation in progress |
 | 🟡 **Yellow** | Warning | Please select data first |
+| 🟡 **Yellow** | Warning | Please enter a table name |
 
 These appear in the **bottom right** and auto-dismiss after 4 seconds.
+
+### Common Notifications Summary
+
+| Operation | Success Message | Error Message |
+|-----------|-----------------|---------------|
+| **Create Table** | "Table '{name}' created successfully!" | "Failed to create table: {reason}" |
+| **Delete Table** | "Table deleted successfully!" | "Failed to delete table" |
+| **Delete Connection** | "Connection '{name}' deleted successfully!" | "Failed to delete connection" |
+| **Extract Data** | "Data extracted successfully!" | "Failed to extract data" |
+| **Share File** | "File shared successfully!" | "Failed to share file" |
+| **Save Changes** | "Changes saved successfully!" | "Failed to save changes" |
+| **No Tables** | (Blue banner) "No tables found" | — |
 
 ---
 

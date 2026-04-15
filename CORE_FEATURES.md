@@ -267,6 +267,96 @@ def extract_data(request):
 
 ---
 
+## 2️⃣b Table Management
+
+### Feature Overview
+Create and delete database tables directly from the UI for connections that have no tables or to add new tables.
+
+### User Journey
+```
+1. User selects a connection from dropdown
+2. System checks if connection has any tables
+3. If NO TABLES found:
+   - Blue banner appears: "No tables found"
+   - "Create New Table" section becomes visible with "Show" button
+   - User clicks "Show" to expand form
+4. User enters table name and SQL statement
+5. User clicks "Create"
+6. Backend executes SQL on the connected database
+7. ✅ Green success notification: "Table '{name}' created successfully!"
+8. Table appears in available tables list
+9. User can now extract data from this table
+10. To delete a table: Select it from dropdown and click "Delete" button
+11. ✅ Green success notification: "Table deleted successfully!"
+```
+
+### Frontend Components
+```
+TableCreationForm.tsx
+├── "Create New Table" section (shown when no tables exist)
+├── Expandable form (Show/Hide toggle)
+├── Table Name input field
+├── SQL Statement textarea
+├── Database-specific SQL templates:
+│   ├── PostgreSQL template
+│   ├── MySQL template
+│   ├── MongoDB template
+│   └── ClickHouse template
+├── Create button
+└── Error feedback (red notifications)
+
+Extract Data Section
+├── Table Name dropdown
+│   ├── Shows "Select a table" (when tables exist)
+│   └── Shows "No tables found" (when no tables)
+├── Delete button (for selected table)
+└── Notifications for delete operations
+```
+
+### Backend Implementation
+```python
+# Create table endpoint
+POST /api/connections/{connection_id}/create-table/
+Body: {
+    "sql_statement": "CREATE TABLE users (id INT, name VARCHAR(255))"
+}
+Response: {"status": "success", "message": "Table created successfully"}
+
+# Delete table endpoint  
+DELETE /api/connections/{connection_id}/delete-table/
+Body: {
+    "table_name": "users"
+}
+Response: {"status": "success", "message": "Table deleted successfully"}
+```
+
+### Notifications for Table Operations
+
+| Operation | Success Message | Error Message | Type |
+|-----------|-----------------|---------------|------|
+| **Create Table** | "Table '{name}' created successfully!" | "Failed to create table: {error}" | Toast 🟢 |
+| **Delete Table** | "Table deleted successfully!" | "Failed to delete table" | Toast 🟢 |
+| **No Tables** | "No tables found" | — | Blue Banner |
+| **Missing Fields** | — | "Please enter a table name" | Warning 🟡 |
+| **Validation Error** | — | "Please enter a SQL statement" | Warning 🟡 |
+
+### Key Features
+- ✅ **Auto-show form** when connection has no tables
+- ✅ **Database-specific SQL templates** for each database type
+- ✅ **Success/error notifications** for all operations
+- ✅ **Immediate UI updates** after successful table operations
+- ✅ **Expandable/collapsible form** to keep UI clean
+- ✅ **Delete table from dropdown** for existing tables
+- 🟡 **Input validation** before submission
+
+### Security Considerations
+- SQL is executed directly on the database (user's responsibility)
+- No SQL injection protection (assumes user-provided SQL is safe)
+- Database credentials are encrypted in storage
+- Operations are logged for audit purposes
+
+---
+
 ## 3️⃣ Editable Data Grid
 
 ### Feature Overview
