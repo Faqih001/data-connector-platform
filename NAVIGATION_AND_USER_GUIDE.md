@@ -250,8 +250,54 @@ This is the **PRIMARY USER INTERFACE** - Most users will spend their time here.
 1. In the **Connections** dropdown
 2. Select the connection you just created
 3. The connection is now active for data extraction
+4. Available tables from that connection load automatically
 
-#### Step 3: Extract Data
+#### Step 3: Create or Manage Tables (Optional)
+
+**Note:** This step is optional. Skip if tables already exist in your connection.
+
+##### Creating a New Table
+1. Look for the **📋 Create New Table** section (appears in light blue box)
+2. Click **Show** to expand the form
+3. Fill in the form:
+   - **Table Name:** Enter a name for your new table (e.g., "customers", "products")
+   - **SQL Statement:** Enter your CREATE TABLE SQL statement
+     - Pre-filled templates available for each database type
+     - Click **Use Template** to auto-fill sample SQL
+4. Click **Create Table** button
+5. ✅ **Green success notification appears:** `"Table 'table_name' created successfully!"`
+6. Table is immediately available in the dropdown
+
+**Database-Specific SQL Examples:**
+- **PostgreSQL:** `CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255))`
+- **MySQL:** `CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))`
+- **MongoDB:** Collections auto-create on first insert
+- **ClickHouse:** `CREATE TABLE users (id UInt32, name String) ENGINE = MergeTree() ORDER BY id`
+
+##### Deleting a Table
+1. Select the table you want to delete from the **Table Name** dropdown
+2. Click the red **Delete** button next to the dropdown
+3. A browser confirmation dialog appears:
+   ```
+   "Are you sure you want to delete the table 'table_name'? This action cannot be undone."
+   ```
+4. Click **OK** to confirm (or **Cancel** to keep the table)
+5. ✅ **Green success notification appears:** `"Table 'table_name' deleted successfully!"`
+6. Table is immediately removed from the dropdown
+7. Any extracted data from that table is cleared from the grid
+
+**Table Management Notifications:**
+
+| Action | Notification | Color | Duration |
+|--------|--------------|-------|----------|
+| Create table success | ✅ Table 'name' created successfully! | Green | 4 seconds |
+| Create table error | ❌ Failed to create table: [error details] | Red | 4 seconds |
+| Delete table success | ✅ Table 'name' deleted successfully! | Green | 4 seconds |
+| Delete table error | ❌ Failed to delete table: [error details] | Red | 4 seconds |
+
+**⚠️ WARNING:** Deleting a table is **PERMANENT**. All data in that table will be lost. Download any critical data before deleting.
+
+#### Step 4: Extract Data
 1. In the **RIGHT PANEL** → **Extract Data** section
 2. Fill in:
    - **Table Name:** The database table to extract from
@@ -264,9 +310,26 @@ This is the **PRIMARY USER INTERFACE** - Most users will spend their time here.
 
 #### Step 4: View & Edit Data
 1. The **Data Grid** shows your extracted data
-2. Click any cell to **edit** the value
-3. Make your changes
-4. Click **Save Data** to store changes
+2. **Edit existing cells:**
+   - Click any cell to **edit** the value
+   - Make your changes
+   - Press Enter or click outside the cell to save
+3. **Add new rows:**
+   - Click **➕ Add Row** button
+   - New empty row appears at the bottom
+   - Click cells in the new row to add data
+4. **Add new columns:**
+   - Click **➕ Add Column** button
+   - Enter the column name in the text field
+   - Click **Add Column** to create it
+   - New column appears in all rows
+5. **Delete rows:**
+   - Select rows by clicking checkboxes on the left
+   - Click **🗑️ Delete Selected (N)** where N is the count of selected rows
+   - Selected rows are removed
+6. **Save all changes:**
+   - Click **Save Changes** button at the bottom
+   - All edits, new rows, and new columns are saved
 
 #### Step 5: Download or Share
 1. Click on a **file** in the **Stored Files** section

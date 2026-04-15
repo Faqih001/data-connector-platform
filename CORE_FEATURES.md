@@ -276,30 +276,44 @@ Display extracted data in an interactive grid where users can edit values and tr
 ```
 1. Extraction completes, grid appears with data
 2. User can see all row values
-3. User double-clicks a cell to edit
+3. User clicks a cell to edit
 4. User types new value
 5. Changed cell is highlighted
-6. User can see original vs modified values
-7. User can revert individual cells
-8. User can select multiple rows for batch edits
+6. User can add new rows (➕ Add Row button)
+7. User can add new columns (➕ Add Column button)
+8. User can select rows and delete them (🗑️ Delete Selected)
+9. User can select multiple rows for batch operations
+10. User clicks "Save Changes" to persist all edits
 ```
+
+### Grid Operations Available
+- **✏️ Edit Cells:** Click any cell to edit inline, press Enter to save
+- **➕ Add Row:** Create new empty rows for data entry
+- **➕ Add Column:** Add new columns with custom names
+- **🗑️ Delete Selected:** Remove multiple selected rows at once
+- **💾 Save Changes:** Persist all edits, additions, and deletions to backend
+- **🔄 Track Changes:** Visual highlighting shows which cells were modified
 
 ### Frontend Components
 ```
 DataGrid.tsx
-├── Column headers (sortable)
+├── Column headers (sortable, editable on header click)
 ├── Row data (with original values in tooltips)
-├── Editable cells (with validation feedback)
-├── Change tracking (shows original/modified)
+├── Editable cells (inline editing)
 ├── Row selection checkboxes
-├── Diff view (show what changed)
-└── Revert button (undo individual changes)
+├── ➕ Add Row button (creates new empty row)
+├── ➕ Add Column button (creates new column)
+├── 🗑️ Delete Selected button (deletes selected rows)
+├── 💾 Save Changes button (persists all changes)
+├── Change tracking (visual highlighting of modified cells)
+├── Column name input field (for new columns)
+└── Empty state message (when no data available)
 
 CellEditor.tsx
 ├── Input field (text, number, date based on type)
+├── Inline editing with auto-save on blur
 ├── Validation feedback
-├── Save/Cancel buttons
-└── Undo/Redo support
+└── Original value display as placeholder
 ```
 
 ### Frontend Implementation
