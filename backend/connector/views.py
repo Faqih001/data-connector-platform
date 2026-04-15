@@ -586,11 +586,15 @@ def extract_data_endpoint(request):
 
             # Create StoredFile record linked to ExtractedData
             user = request.user if request.user.is_authenticated else None
+            base_filename = f"extraction_{connection.name}_{table_name}"
             StoredFile.objects.create(
                 user=user,
                 extracted_data=extracted_data,
                 filepath=filepath,
-                format_type=format_type
+                format_type=format_type,
+                table_name=table_name,
+                connection_name=connection.name,
+                base_filename=base_filename
             )
             return Response({
                 "data": batch,
