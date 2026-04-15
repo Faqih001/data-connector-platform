@@ -1,0 +1,96 @@
+# 🐍 Django/Python Backend .gitignore
+
+# ========== Python Virtual Environment ==========
+.venv/
+venv/
+env/
+ENV/
+.env
+*.egg-info/
+dist/
+build/
+
+# ========== Python Cache & Compiled Files ==========
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+
+# ========== Django Specific ==========
+db.sqlite3
+db.sqlite3-journal
+*.log
+local_settings.py
+*/migrations/__pycache__/
+*/migrations/*.pyc
+
+# ========== Django Media & Static Files ==========
+media/extracted_*
+media/*.json
+media/extraction_*
+media/file_*
+staticfiles/
+static/
+
+# ========== Database Backups & Exports ==========
+*.sql
+*.sql.gz
+backups/
+dump.rdb
+
+# ========== Testing ==========
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+test-results/
+
+# ========== IDE & Editor ==========
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+
+# ========== OS Files ==========
+.DS_Store
+Thumbs.db
+._.DS_Store
+*.lnk
+
+# ========== Temporary Files ==========
+*.tmp
+*.bak
+*.backup
+*.orig
+.#*
+
+# ========== Logs ==========
+logs/
+*.log
+*.log.*
+
+# ========== Environment Secrets ==========
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+secrets/
+
+# ========== IDE Extensions ==========
+.pylintrc
+.mypy.ini
+.flake8
+
+# ========== Django Uploads & Generated ==========
+site-packages/
+*.egg-info
+celerybeat-schedule

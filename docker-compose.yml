@@ -16,7 +16,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    command: python manage.py runserver 0.0.0.0:8000
+    command: python manage.py runserver 0.0.0.0:8001
     volumes:
       - ./backend:/app
     ports:
@@ -44,7 +44,7 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
     ports:
-      - "5433:5432"
+      - "5432:5433"
     networks:
       - app-network
 
@@ -56,22 +56,22 @@ services:
       - MYSQL_USER=user
       - MYSQL_PASSWORD=password
     ports:
-      - "3307:3306"
+      - "3306:3307"
     networks:
       - app-network
 
   mongo:
     image: mongo:4.4
     ports:
-      - "27018:27017"
+      - "27017:27018"
     networks:
       - app-network
 
   clickhouse:
     image: yandex/clickhouse-server
     ports:
-      - "8124:8123"
-      - "9001:9000"
+      - "8123:8124"
+      - "9000:9001"
     networks:
       - app-network
 
