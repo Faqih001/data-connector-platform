@@ -153,48 +153,276 @@ The script will:
 # 2. Navigate to project folder
 cd \path\to\data-connector-platform
 
-# 3. Run the setup batch file
-setup.bat
+## 🐳 Docker Setup (Start, Restart, Troubleshoot)
+
+### Quick Docker commands (run these first)
+
+```bash
+# Build and start containers (detached)
+docker-compose up -d
+
+# View live logs for all services
+docker-compose logs -f
+
+# Stop and remove containers
+docker-compose down
+
+# Restart services
+docker-compose restart
+
+# Rebuild images (no cache) and start fresh
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
+### Docker Prerequisites
+
+- ✅ Docker installed (`docker --version`)
+- ✅ Docker Compose installed (`docker-compose --version`)
+- ✅ Ports 3000 and 8001 available
+- ✅ At least 2GB RAM allocated to Docker
+
+### Quick Start with Docker
+
+```bash
+# Navigate to project root
+cd /path/to/data-connector-platform
+
+# Build and start all services
+setup.bat
+
+# View logs
+```
+
+# Wait for services to be ready (30-60 seconds)
+```
+
+Services will be available at:
+- **Frontend:** http://localhost:3000
+- **Backend:** http://localhost:8001
+- **Admin Panel:** http://localhost:8001/admin/
+
+### Docker Commands Reference
+
+#### Starting & Stopping
+
+**Start services:**
+```bash
+# Start in detached mode (background)
+
+
+# Start and view logs
 ---
+```
 
+**Stop services:**
+```bash
+
+```
+
+**Stop and remove containers:**
+```bash
 ## 📖 Manual Setup (Sequential Steps)
+```
 
+#### Restarting Services
+
+**Restart all services:**
+```bash
+
+```
+
+**Restart specific service:**
+```bash
+# Restart only backend
 Follow these steps **in order** for a complete manual setup. This is best if you want control over each step or if the automated setup doesn't work.
 
-### Step 1: Navigate to Project Directory
+# Restart only frontend
 
-```bash
-cd /path/to/data-connector-platform
 ```
 
+**Soft restart (stop → start):**
+```bash
+### Step 1: Navigate to Project Directory
+
+```
+
+**Hard restart (rebuild containers):**
+```bash
+# Stop everything
+```bash
+
+# Rebuild images
+cd /path/to/data-connector-platform
+
+# Start everything
+```
+```
+
+#### Viewing Logs
+
+**View all logs:**
+```bash
+
+```
+
+**View specific service logs:**
+```bash
+# Backend logs
 ### Step 2: Install Node.js Frontend Dependencies
 
+# Frontend logs
+
+```
+
+**View last 50 lines:**
+```bash
+```bash
+```
+
+#### Building Images
+
+**Build all images:**
 ```bash
 # Install all npm packages
-npm install
+```
 
+**Rebuild without cache (fresh build):**
+```bash
+npm install
+```
+
+**Build specific service:**
+```bash
+# Build only backend
+
+
+# Build only frontend
 # This installs Next.js, React, TypeScript, and frontend dependencies
 ```
 
-**Expected:** No errors, `node_modules/` folder created
+### Docker Troubleshooting
 
+#### Issue: "Port 3000 is already allocated"
+
+**Solution:**
+```bash
+# Find and stop container using port 3000
+```
+
+
+# Or use different port in docker-compose.yml
+# Change: ports: - "3000:3000" to "3001:3000"
+```
+
+#### Issue: "Port 8001 is already allocated"
+
+**Solution:**
+```bash
+# Find process using port 8001
+lsof -i :8001
+kill -9 <PID>
+
+# Or modify docker-compose.yml port mapping
+```
+
+#### Issue: "Cannot connect to Docker daemon"
+
+**Solution (Linux):**
+```bash
+# Start Docker service
+sudo systemctl start docker
+
+# Add current user to docker group
+sudo usermod -aG docker $USER
+
+# Apply new group membership
+newgrp docker
+
+# Verify Docker is running
+**Expected:** No errors, `node_modules/` folder created
+```
+
+#### Issue: "Out of disk space" or "No space left on device"
+
+**Solution:**
+```bash
+# Remove unused Docker images and containers
+
+
+# More aggressive cleanup (remove all unused resources)
 ### Step 3: Set Up Python Virtual Environment
 
+# Check Docker disk usage
+
+```
+
+#### Issue: "Container exits immediately" or "keeps restarting"
+
+**Solution:**
+```bash
+# Check logs to see error
 Navigate to the backend folder and create a virtual environment:
 
+
+# Rebuild containers
 #### Option A: Using venv (Recommended)
 ```bash
 cd backend
 
-# Create virtual environment
-python3 -m venv .venv
+# Verify logs again
 
+```
+
+#### Issue: "Backend container can't connect to external database"
+
+**Solution:**
+```bash
+# Use host network (Linux only)
+# In docker-compose.yml, add to backend service:
+# network_mode: "host"
+
+# Or update database host from "localhost" to "host.docker.internal" (Mac/Windows)
+# Or use Docker network to expose databases
+```
+
+#### Issue: "Cannot run docker-compose: command not found"
+
+**Solution:**
+```bash
+# Check if installed
+# Create virtual environment
+
+# If not found, install
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Verify
+python3 -m venv .venv
+```
+
+#### Full Reset (Nuclear Option)
+
+```bash
+# Stop and remove all containers and volumes
+
+
+# Remove dangling images
 # Activate virtual environment
+
+# Rebuild everything from scratch
 # On Linux/macOS:
+
+# Start fresh
 source .venv/bin/activate
 
+# Watch logs
+
+```
+
+---
+
+## ✅ Prerequisites Check
 # On Windows:
 # .venv\Scripts\activate
 
