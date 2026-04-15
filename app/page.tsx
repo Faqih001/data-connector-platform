@@ -8,7 +8,7 @@ import { FileViewer } from "./components/FileViewer";
 import { TableCreationForm } from "./components/TableCreationForm";
 import { Loader } from "./components/Loader";
 import { useToast } from "./components/ToastContext";
-import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData, deleteTable } from "./lib/api";
+import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData, deleteTable, deleteConnection } from "./lib/api";
 import { DatabaseConnection, StoredFile } from "./types";
 
 const API_URL = 'http://localhost:8001/api';
@@ -290,6 +290,44 @@ export default function Home() {
     }
   };
 
+  const handleDeleteConnection = async (connectionId: number, connectionName: string) => {
+    // Confirm before deletion
+    if (!window.confirm(
+      `Are you sure you want to delete the connection "${connectionName}"? This will delete all tables and extracted data associated with this connection. This action cannot be undone.`
+    )) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      await deleteConnection(connectionId);
+      
+      // Success - show toast and refresh
+      toast.success(`Connection "${connectionName}" deleted successfully!`);
+      
+      // Clear selected connection and refresh list
+      setSelectedConnection(null);
+      setTableName("");
+      setData([]);
+      setExtractedDataInfo(null);
+      setAvailableTables([]);
+      
+      // Refresh connections list
+      const updatedConnections = connections.filter(c => c.id !== connectionId);
+      setConnections(updatedConnections);
+      
+      // Reload all data
+      await loadInitialData();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete connection";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleExtractData = async () => {
     if (!selectedConnection || !tableName) {
       toast.error("Please select a connection and table");
@@ -480,21 +518,31 @@ export default function Home() {
             {/* Connections Section */}
             <div className="p-4 border rounded-lg bg-white shadow-sm">
               <h2 className="text-base sm:text-lg font-bold mb-3">🔗 Connections</h2>
-              <select
-                className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={selectedConnection?.id || ""}
-                onChange={(e) => {
-                  const conn = connections.find((c) => c.id === parseInt(e.target.value));
-                  setSelectedConnection(conn || null);
-                }}
-              >
-                <option value="">Select a connection</option>
-                {connections.map((conn) => (
-                  <option key={conn.id} value={conn.id}>
-                    {conn.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <select
+                  className="flex-1 p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={selectedConnection?.id || ""}
+                  onChange={(e) => {
+                    const conn = connections.find((c) => c.id === parseInt(e.target.value));
+                    setSelectedConnection(conn || null);
+                  }}
+                >
+                  <option value="">Select a connection</option>
+                  {connections.map((conn) => (
+                    <option key={conn.id} value={conn.id}>
+                      {conn.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => selectedConnection && handleDeleteConnection(selectedConnection.id, selectedConnection.name)}
+                  disabled={!selectedConnection || isLoading}
+                  className="px-3 py-2 bg-red-500 hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors whitespace-nowrap"
+                  title="Delete this connection and all associated data"
+                >
+                  🗑️ Delete
+                </button>
+              </div>
             </div>
 
             {/* Table Creation Section - Show when no tables exist */}

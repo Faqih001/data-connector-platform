@@ -274,3 +274,34 @@ export async function createTable(connectionId: number, sqlStatement: string): P
     
     return response.json();
 }
+
+export async function deleteConnection(connectionId: number): Promise<{ message: string }> {
+    const csrfToken = await getCsrfToken();
+    
+    const response = await fetch(`${API_URL}/connections/${connectionId}/`, {
+        ...fetchOptions,
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': csrfToken,
+        },
+    });
+    
+    if (!response.ok) {
+        try {
+            const errorData = await response.json();
+            throw new Error(errorData.error || errorData.detail || 'Failed to delete connection');
+        } catch (e) {
+            if (e instanceof Error && e.message !== 'Failed to delete connection') {
+                throw e;
+            }
+            throw new Error('Failed to delete connection');
+        }
+    }
+    
+    // 204 No Content has no response body
+    if (response.status === 204) {
+        return { message: 'Connection deleted successfully' };
+    }
+    
+    return response.json();
+}

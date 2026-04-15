@@ -261,6 +261,40 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    def destroy(self, request, pk=None):
+        """
+        Delete a connection and all associated extracted data and stored files.
+        Cascade delete handled by Django ORM through ForeignKey relationships.
+        """
+        try:
+            connection = self.get_object()
+            connection_name = connection.name
+            
+            # Delete all ExtractedData records for this connection
+            # This will cascade delete StoredFile records due to OneToOneField
+            ExtractedData.objects.filter(connection=connection).delete()
+            
+            # Delete the connection itself
+            connection.delete()
+            
+            return Response(
+                {"message": f"Connection '{connection_name}' and all associated data deleted successfully"},
+                status=status.HTTP_204_NO_CONTENT
+            )
+        except DatabaseConnection.DoesNotExist:
+            return Response(
+                {"error": "Connection not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class StoredFileViewSet(viewsets.ModelViewSet):
     queryset = StoredFile.objects.all()
     serializer_class = StoredFileSerializer
