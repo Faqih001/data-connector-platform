@@ -71,7 +71,9 @@ npm run frontend # Terminal 2 - starts on port 3000
 - 🔐 **Secure Authentication**: Session-based login with CSRF protection
 - 🔌 **Multi-Database Support**: Connect to PostgreSQL, MySQL, MongoDB, ClickHouse
 - 📊 **Data Extraction**: Extract data in configurable batches (JSON or CSV)
+- 📋 **Table Management**: Create and delete tables directly from the UI
 - ✏️ **Data Editing**: Edit extracted data in an interactive grid
+- 📁 **Stored Files Management**: Download, filter, share, and organize extracted files
 - 💾 **Data Storage**: Store files and extracted data with version history
 - 👥 **User Management**: Multiple user roles (Admin, Sales, Analytics, Reporting)
 - 🔄 **Batch Processing**: Process large datasets efficiently

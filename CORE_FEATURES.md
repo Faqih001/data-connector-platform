@@ -700,6 +700,211 @@ class Submission(models.Model):
 
 ---
 
+## 5️⃣b Stored Files Management
+
+### Feature Overview
+A comprehensive file management system in the left panel that allows users to organize, filter, download, share, and delete extracted data files.
+
+### User Journey
+```
+1. User extracts data from database
+2. Extracted file appears in "Stored Files" section (left panel)
+3. User can view file metadata (date, table, connection)
+4. User filters files by date range or table name
+5. User selects single or multiple files
+6. User can download, share, or delete selected files
+7. Deleted files move to trash (soft delete)
+8. User can restore deleted files or permanently delete them
+9. Shared files show "📤 Shared" badge
+10. User receives notifications for all operations
+```
+
+### Stored Files Functionalities
+
+#### 1. File List Display
+- **Filename** - Auto-generated from extraction details
+- **Extraction Date** - When the data was extracted
+- **Table Name** - Source table from database
+- **Connection Name** - Source database connection
+- **Shared Badge** - Shows if file is shared
+- **Modified Date** - Last edit timestamp
+
+#### 2. File Selection (Single & Multi)
+- **Single Select:** Click file to load in data grid
+- **Multi-Select:** Use checkboxes for batch operations
+- **Select All:** Header checkbox selects all visible files
+- **Count Display:** "🗑️ Delete Selected (N)" shows count
+
+#### 3. Filter by Date Range
+- **From Date:** Filter files extracted on or after this date
+- **To Date:** Filter files extracted on or before this date
+- **Combined:** Both filters work together for date range
+- **Real-time:** Filters apply immediately
+
+#### 4. Filter by Table Name
+- **Search Box:** Type table name to filter
+- **Partial Match:** Searches table names and filenames
+- **Case Insensitive:** "Users" and "users" both match
+- **Live Update:** Results update as you type
+
+#### 5. Sort Order
+- **Latest (default):** Most recently extracted/modified first
+- **Oldest:** Oldest files listed first
+- **Sorting Key:** Uses `last_modified_at` or `extracted_at`
+
+#### 6. Download Files
+- **Format Selection:** JSON or CSV
+- **Download Button:** Saves file to computer
+- **Format Details:**
+  - **JSON:** Full structure, nested data, API integration
+  - **CSV:** Tabular format, Excel compatible, analysis tools
+- **File Naming:** Auto-generates with timestamp
+- **Notification:** 🟢 "File downloaded successfully!"
+
+#### 7. Share Files
+- **Share Modal:** Opens user search interface
+- **User Search:** Search by username or email
+- **Multi-Select:** Share with multiple users at once
+- **Permission Level:** 
+  - View Only (read-only access)
+  - View & Download (can download file)
+- **Notifications:**
+  - 🟢 "File shared successfully!"
+  - Recipient receives share notification
+- **Shared Badge:** File shows "📤 Shared" indicator
+
+#### 8. Unshare Files
+- **Remove Access:** Click remove next to shared user
+- **Revoke Permission:** User immediately loses access
+- **Notification:** 🟢 "File unshared successfully!"
+- **Batch Unshare:** Can manage multiple shares
+
+#### 9. Delete Files (Soft Delete)
+- **Move to Trash:** Files not permanently deleted immediately
+- **Temporary Removal:** File hidden from main list
+- **Trash Section:** Recently deleted files visible
+- **Restore Option:** Can undo deletion
+- **Notification:** 🔴 "File moved to trash"
+
+#### 10. Restore Deleted Files
+- **Trash Section:** View deleted files
+- **Restore Button:** Recovers file to main list
+- **Full Recovery:** All data and shares restored
+- **Notification:** 🟢 "File restored successfully!"
+
+#### 11. Permanently Delete Files
+- **Irreversible:** Completely removes from system
+- **Confirmation:** Requires user confirmation
+- **⚠️ Warning:** Shows "This cannot be undone"
+- **Cascade:** Removes all shares and access records
+- **Notification:** 🔴 "File permanently deleted"
+
+#### 12. View File Details & Metadata
+- **Created By** - User who extracted the file
+- **Extraction Timestamp** - Exact date and time
+- **Table Source** - Original database table
+- **Connection Source** - Database connection used
+- **File Size** - Size of extracted data
+- **Access Level** - Your role (owner/viewer/downloader)
+- **Shared With** - List of users with access
+- **Permission Details** - Each user's access level
+
+### Frontend Components
+```typescript
+FileViewer.tsx
+├── File list container
+├── Filter section
+│   ├── Date range picker (From/To)
+│   ├── Table name search box
+│   └── Sort order selector
+├── File operations
+│   ├── Select all checkbox
+│   ├── File item (with checkboxes)
+│   ├── Download button + format selector
+│   ├── Share button (opens modal)
+│   ├── Delete button
+│   └── File badge (Shared indicator)
+├── Share modal
+│   ├── User search input
+│   ├── Search results
+│   ├── User multi-select
+│   ├── Permission level selector
+│   └── Share confirm button
+├── Trash section
+│   ├── Deleted files list
+│   ├── Restore button per file
+│   └── Permanently delete button
+└── File details panel
+    ├── Metadata display
+    ├── Share list with remove options
+    └── Access control info
+```
+
+### Backend API Endpoints
+```python
+# Get all files
+GET /api/files/
+
+# Get file details
+GET /api/files/{id}/
+
+# Download file
+GET /api/files/{id}/download/
+Query params: ?format=json|csv
+
+# Share file
+POST /api/files/{id}/share/
+Body: {
+    "user_id": 123,
+    "permission": "download"
+}
+
+# Unshare file
+DELETE /api/files/{id}/share/{user_id}/
+
+# Delete file (soft delete)
+DELETE /api/files/{id}/
+Body: {"soft_delete": true}
+
+# Restore file
+PATCH /api/files/{id}/restore/
+
+# Permanently delete file
+DELETE /api/files/{id}/
+Body: {"permanent": true}
+
+# Filter & search files
+GET /api/files/?table_name=users&from_date=2026-04-01&to_date=2026-04-15&sort=latest
+```
+
+### Notifications for File Operations
+
+| Operation | Success Message | Error Message | Type |
+|-----------|-----------------|---------------|------|
+| **Download** | "File downloaded successfully!" | "Failed to download file" | Toast 🟢 |
+| **Share** | "File shared successfully!" | "Failed to share file" | Toast 🟢 |
+| **Unshare** | "File unshared successfully!" | "Failed to unshare file" | Toast 🟢 |
+| **Delete** | "File moved to trash" | "Failed to delete file" | Toast 🔴 |
+| **Restore** | "File restored successfully!" | "Failed to restore file" | Toast 🟢 |
+| **Permanent Delete** | "File permanently deleted" | "Cannot delete file" | Toast 🔴 |
+| **No Files** | — | "No files found" | Message 🔵 |
+
+### Security & Permissions
+- ✅ **Ownership Check:** User can only download/share own files or shared files
+- ✅ **Permission Enforcement:** Download denied if only "View" permission
+- ✅ **Share Audit:** All share operations logged
+- ✅ **Cascade Delete:** Deleting file removes all shares
+- ✅ **Soft Delete:** Preserves audit trail before permanent delete
+
+### Performance Considerations
+- **Pagination:** Load files in pages for large datasets
+- **Lazy Loading:** Download only when needed
+- **Filtering:** Server-side filtering for efficiency
+- **Caching:** Cache file metadata for quick access
+- **Batch Operations:** Support multi-file operations
+
+---
+
 ## 6️⃣ Permission & Access Control
 
 ### User Roles

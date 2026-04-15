@@ -2,7 +2,7 @@
 
 **Status:** 🟢 **READY FOR SUBMISSION** | April 14, 2026
 
-**LATEST UPDATE:** Delete connection feature with cascade cleanup implemented and tested
+**LATEST UPDATE:** Delete connection feature with cascade cleanup, table management (create/delete tables), stored files management (filter, download, share, delete), and comprehensive notifications fully documented and tested
 
 ---
 

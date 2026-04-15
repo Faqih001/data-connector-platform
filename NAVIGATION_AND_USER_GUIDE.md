@@ -315,17 +315,118 @@ When you select a connection:
    - Click **Save Changes** button at the bottom
    - All edits, new rows, and new columns are saved
 
-#### Step 5: Download or Share
-1. Click on a **file** in the **Stored Files** section
-2. Choose format: **JSON** or **CSV**
-3. Click **Download** to save to your computer
-4. To share with others:
-   - Click 📤 **Share** button
-   - Search for colleague's username
-   - Select them and click **Share**
-   - They receive access confirmation
+#### Step 5: Manage Stored Files
 
-#### Step 6 (Optional): Delete a Connection
+**The Stored Files section** (left panel) shows all extracted data files with full management capabilities.
+
+##### File List & Display
+1. Each file shows:
+   - **📄 Filename** - The extracted file name
+   - **📅 Extraction Date** - When the data was extracted
+   - **📊 Table Name** - Which database table was extracted
+   - **🔌 Connection Name** - Which database connection it came from
+   - **📤 Shared Badge** (if applicable) - Shows files shared with you or by you
+   - **Modified Date** - Last time the data was edited
+
+##### Select & Filter Files
+1. **Single Select:**
+   - Click on any file to view/edit it
+   - File appears in the right panel data grid
+2. **Multi-Select (for batch operations):**
+   - Check the ☑️ checkbox next to each file
+   - Check the header checkbox to **Select All** visible files
+   - Shows count: "🗑️ Delete Selected (N)" where N = number selected
+3. **Filter Files:**
+   - **By Date Range:**
+     - Set "From Date" to filter files from a specific date onwards
+     - Set "To Date" to filter files up to a specific date
+   - **By Table Name:**
+     - Search for specific table names in the search box
+     - Filters files from that table
+   - **Sort Order:**
+     - **Latest** (default) - Most recently extracted/modified first
+     - **Oldest** - Oldest files first
+
+##### Download Files
+1. Click on a file in the **Stored Files** section
+2. The file data appears in the grid on the right
+3. Choose format:
+   - 📥 **JSON** - For data interchange and API integration
+   - 📥 **CSV** - For Excel, spreadsheets, and data analysis
+4. Click **Download** button
+5. File saves to your computer's downloads folder
+6. ✅ Green notification: "File downloaded successfully!"
+
+**Note:** Downloaded files are copies. Your original file in the system is unchanged.
+
+##### Share Files with Others
+1. Click 📤 **Share** button next to the file
+2. A share modal appears
+3. **Search for colleague:**
+   - Type their username or email
+   - Search results appear automatically
+4. **Select users** to share with:
+   - Click on each user to select them
+   - Multiple users can be selected at once
+5. **Permission level** (if configurable):
+   - 👁️ **View Only** - User can see the data but not download
+   - ⬇️ **View & Download** - User can download the file
+6. Click **Share** to confirm
+7. ✅ Green notification: "File shared successfully!"
+8. **Shared badge** appears on the file: "📤 Shared"
+9. Selected users receive notification
+
+##### Unshare Files
+1. Click 📤 **Share** button on a file you've shared
+2. See list of users who have access
+3. Next to each user, click **Remove** or **🗑️**
+4. User loses access immediately
+5. ✅ Green notification: "File unshared successfully!"
+
+##### Delete Files
+1. **Delete single file:**
+   - Right-click on file and select **Delete** OR
+   - Check the checkbox and click **🗑️ Delete Selected**
+2. File is soft-deleted (temporarily removed)
+3. 🔴 Red notification: "File moved to trash"
+
+2. **Restore deleted file:**
+   - Deleted files appear in **Trash/Recently Deleted** section
+   - Click **Restore** button
+   - 🟢 Green notification: "File restored successfully!"
+
+3. **Permanently delete:**
+   - In trash, click **Permanently Delete** or **Delete Forever**
+   - ⚠️ **This cannot be undone**
+   - File is removed from system
+
+##### View File Details & Metadata
+1. Click on any file name
+2. See full details:
+   - **Created By** - Who extracted this data
+   - **Extraction Timestamp** - Exact date/time
+   - **Table Source** - Original table name
+   - **Connection Source** - Which database it came from
+   - **File Size** - How large the extracted data is
+   - **Access Level** - Your permission (owner/viewer/downloader)
+   - **Shared With** - List of users who have access
+
+---
+
+#### Step 6 (Optional): Download or Share
+
+**Quick workflow for common tasks:**
+
+1. **I want to download a file for analysis:**
+   - Click file → Choose CSV → Download → Use in Excel
+2. **I want to share data with my team:**
+   - Click file → Click Share → Select team members → Share
+3. **I need to clean up old files:**
+   - Select multiple old files → Delete Selected → Confirm
+4. **I accidentally deleted a file:**
+   - Go to Trash → Find file → Restore
+
+#### Step 7 (Optional): Delete a Connection
 1. In the **Connections** dropdown
 2. Select a connection you want to delete
 3. Click the red **🗑️ Delete** button

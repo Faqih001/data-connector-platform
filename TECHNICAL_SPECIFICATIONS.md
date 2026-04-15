@@ -329,6 +329,144 @@ FileShare
 - User must own the connection OR be admin
 - Non-owners cannot delete other users' connections
 
+#### POST /api/connections/{id}/create-table/ - Create Table
+
+**Request:**
+```
+POST /api/connections/30/create-table/
+Headers:
+  Authorization: Token <user-token>
+  X-CSRFToken: <csrf-token>
+  Content-Type: application/json
+
+Body:
+{
+  "sql_statement": "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255))"
+}
+```
+
+**Response (Success - 201 Created):**
+```json
+{
+  "status": "success",
+  "message": "Table created successfully",
+  "table_name": "users"
+}
+```
+
+**Response (Validation Error - 400):**
+```json
+{
+  "error": "sql_statement is required"
+}
+```
+
+**Response (SQL Error - 500):**
+```json
+{
+  "error": "SQL execution failed: {database_specific_error}"
+}
+```
+
+**SQL Template Examples:**
+```sql
+-- PostgreSQL
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- MySQL
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ClickHouse
+CREATE TABLE users (
+  id UInt32,
+  name String,
+  created_at DateTime DEFAULT now()
+) ENGINE = MergeTree()
+ORDER BY id;
+```
+
+#### DELETE /api/connections/{id}/delete-table/ - Delete Table
+
+**Request:**
+```
+DELETE /api/connections/30/delete-table/
+Headers:
+  Authorization: Token <user-token>
+  X-CSRFToken: <csrf-token>
+  Content-Type: application/json
+
+Body:
+{
+  "table_name": "users"
+}
+```
+
+**Response (Success - 204 No Content):**
+```
+HTTP/1.1 204 No Content
+
+(Empty body - indicates successful deletion)
+```
+
+**Response (Validation Error - 400):**
+```json
+{
+  "error": "table_name is required"
+}
+```
+
+**Response (Table Not Found - 404):**
+```json
+{
+  "error": "Table 'users' not found"
+}
+```
+
+**Response (SQL Error - 500):**
+```json
+{
+  "error": "Failed to delete table: {database_specific_error}"
+}
+```
+
+#### GET /api/connections/{id}/tables/ - Get Available Tables
+
+**Request:**
+```
+GET /api/connections/30/tables/
+Headers:
+  Authorization: Token <user-token>
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "tables": [
+    "users",
+    "products",
+    "orders"
+  ],
+  "count": 3
+}
+```
+
+**Response (Connection Not Found - 404):**
+```json
+{
+  "error": "Connection not found"
+}
+```
+
+---
+
 **Error Handling:**
 - Returns 404 if connection doesn't exist or user lacks permission
 - Returns 500 with error details if deletion fails
@@ -366,12 +504,130 @@ GET    /api/extract/{id}/data/   - Get extracted data
 
 ### File Endpoints
 ```
-GET    /api/files/               - List user's files
-GET    /api/files/{id}/          - Get file details
-GET    /api/files/{id}/download/ - Download file
-POST   /api/files/{id}/share/    - Share file with user
-DELETE /api/files/{id}/          - Delete file
+GET    /api/files/               - List user's files (with filters & sorting)
+GET    /api/files/{id}/          - Get file details & metadata
+GET    /api/files/{id}/download/ - Download file (JSON or CSV)
+POST   /api/files/{id}/share/    - Share file with another user
+DELETE /api/files/{id}/share/{user_id}/ - Unshare file with user
+PATCH  /api/files/{id}/restore/  - Restore deleted file
+DELETE /api/files/{id}/          - Delete file (soft or permanent)
 ```
+
+#### GET /api/files/ - List Files with Filters
+
+**Request:**
+```
+GET /api/files/?table_name=users&from_date=2026-04-01&to_date=2026-04-15&sort=latest
+Headers:
+  Authorization: Token <user-token>
+```
+
+**Query Parameters:**
+- `table_name`: Filter by table name (optional, partial match)
+- `from_date`: Filter from date (YYYY-MM-DD format)
+- `to_date`: Filter to date (YYYY-MM-DD format)
+- `sort`: 'latest' or 'oldest' (default: latest)
+
+**Response (Success - 200 OK):**
+```json
+{
+  "count": 42,
+  "results": [
+    {
+      "id": 1,
+      "filename": "extraction_users_20260414.json",
+      "table_name": "users",
+      "connection_name": "Production DB",
+      "extracted_at": "2026-04-14T12:00:00Z",
+      "created_by": "john_sales",
+      "shared_badge": "📤 Shared"
+    }
+  ]
+}
+```
+
+#### GET /api/files/{id}/ - Get File Details
+
+**Request:**
+```
+GET /api/files/1/
+Headers:
+  Authorization: Token <user-token>
+```
+
+**Response (Success - 200 OK):**
+```json
+{
+  "id": 1,
+  "filename": "extraction_users_20260414.json",
+  "table_name": "users",
+  "extracted_at": "2026-04-14T12:00:00Z",
+  "created_by": "john_sales",
+  "is_owner": true,
+  "shared_with": [
+    {
+      "username": "sarah_analytics",
+      "permission": "download"
+    }
+  ]
+}
+```
+
+#### GET /api/files/{id}/download/ - Download File
+
+**Request:**
+```
+GET /api/files/1/download/?format=json
+Query params: ?format=json|csv
+```
+
+**Response:** File content in JSON or CSV format
+
+#### POST /api/files/{id}/share/ - Share File
+
+**Request:**
+```
+POST /api/files/1/share/
+Body: {"user_id": 2, "permission": "download"}
+```
+
+**Response (Success - 201 Created):**
+```json
+{"status": "success", "message": "File shared successfully"}
+```
+
+#### DELETE /api/files/{id}/share/{user_id}/ - Unshare File
+
+**Request:**
+```
+DELETE /api/files/1/share/2/
+```
+
+**Response (Success - 204 No Content):**
+Empty body
+
+#### PATCH /api/files/{id}/restore/ - Restore Deleted File
+
+**Request:**
+```
+PATCH /api/files/1/restore/
+```
+
+**Response (Success - 200 OK):**
+```json
+{"status": "success", "message": "File restored successfully"}
+```
+
+#### DELETE /api/files/{id}/ - Delete File
+
+**Request:**
+```
+DELETE /api/files/1/
+Body: {"permanent": false} # or true for permanent delete
+```
+
+**Response (Success - 204 No Content):**
+Empty body
 
 ### Submission Endpoints
 ```

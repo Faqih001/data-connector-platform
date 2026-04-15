@@ -148,6 +148,62 @@
 - **User Experience:** ✅ Clear warning presented
 - **Reversibility:** ⚠️ None - permanent deletion (as expected)
 
+### 6. Stored Files Management ✅
+
+#### File List Display
+- ✅ Files display with metadata (date, table, connection)
+- ✅ Shared badge shows on shared files
+- ✅ File selection (single and multi-select)
+- ✅ Select All checkbox works correctly
+
+#### File Filtering & Sorting
+- ✅ Filter by date range (From/To dates)
+- ✅ Filter by table name (partial match)
+- ✅ Sort by latest/oldest
+- ✅ Filters apply in real-time
+
+#### File Operations - Download
+- ✅ Download in JSON format
+- ✅ Download in CSV format
+- ✅ File naming with timestamp
+- ✅ Success notification on download
+- ✅ Download button disabled when no file selected
+
+#### File Operations - Share
+- ✅ Share modal opens on click
+- ✅ User search works (by username/email)
+- ✅ Multi-select users for sharing
+- ✅ Permission level selection (view/download)
+- ✅ Share success notification
+- ✅ Shared badge appears after share
+
+#### File Operations - Delete
+- ✅ Soft delete moves file to trash
+- ✅ File hidden from main list after delete
+- ✅ Delete success notification
+- ✅ Multiple file selection for batch delete
+- ✅ "Delete Selected (N)" button shows count
+
+#### File Operations - Restore
+- ✅ Deleted files visible in trash section
+- ✅ Restore button recovers file to main list
+- ✅ Restore success notification
+- ✅ All shares restored with file
+
+#### File Operations - Permanent Delete
+- ✅ Confirmation dialog shows warning
+- ✅ "Cannot be undone" message clear
+- ✅ File completely removed from system
+- ✅ All shares removed with file
+
+#### Notifications
+- 🟢 Green: "File downloaded successfully!"
+- 🟢 Green: "File shared successfully!"
+- 🟢 Green: "File unshared successfully!"
+- 🟢 Green: "File restored successfully!"
+- 🔴 Red: "File moved to trash"
+- 🔴 Red: "File permanently deleted"
+
 ---
 
 ## Test Files Created for Future Reference
