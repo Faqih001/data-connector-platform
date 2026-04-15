@@ -10,13 +10,16 @@ This document confirms that **ALL REQUIREMENTS** have been **SUCCESSFULLY IMPLEM
 
 **All 4 pages and their navigation are FULLY OPERATIONAL** and verified working.
 
-**NEW FEATURE ADDED:** ✅ **Delete Connection with Cascade Delete**
-- Allows users to delete connections and all associated data
-- Implements complete cascade delete (Connection → ExtractedData → StoredFile)
-- Includes user confirmation dialog with clear warnings
-- Tested successfully with MySQL and ClickHouse connections
-- Returns proper 204 No Content HTTP status
-- CSRF protected for security
+**NEW FEATURES ADDED & DOCUMENTED:** 
+- ✅ **Delete Connection with Cascade Delete** - Allows deletion of connections with all associated data
+- ✅ **Table Management** - Create and delete database tables directly from UI
+- ✅ **Stored Files Management** - Comprehensive file management (filter, download, share, delete, restore)
+
+**FEATURES WITH CASCADE DELETE:**
+- Connection deletion cascades to all ExtractedData and StoredFile records
+- Table deletion removes table from database
+- File deletion includes soft-delete (trash) and permanent delete options
+- All deletions CSRF protected for security
 
 ---
 
