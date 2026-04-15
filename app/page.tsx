@@ -8,7 +8,7 @@ import { FileViewer } from "./components/FileViewer";
 import { TableCreationForm } from "./components/TableCreationForm";
 import { Loader } from "./components/Loader";
 import { useToast } from "./components/ToastContext";
-import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData } from "./lib/api";
+import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData, deleteTable } from "./lib/api";
 import { DatabaseConnection, StoredFile } from "./types";
 
 const API_URL = 'http://localhost:8001/api';
@@ -254,6 +254,42 @@ export default function Home() {
     }
   };
 
+  const handleDeleteTable = async () => {
+    if (!selectedConnection || !tableName) {
+      toast.error("Please select a table to delete");
+      return;
+    }
+
+    // Confirm before deletion
+    if (!window.confirm(`Are you sure you want to delete the table "${tableName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      await deleteTable(selectedConnection.id, tableName);
+      
+      // Success - show toast and refresh
+      toast.success(`Table "${tableName}" deleted successfully!`);
+      
+      // Clear selected data
+      setTableName("");
+      setData([]);
+      setExtractedDataInfo(null);
+      
+      // Refresh available tables
+      const tables = await getTables(selectedConnection.id);
+      setAvailableTables(tables);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete table";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Conditional rendering - MUST come last
   // Show loader while checking authentication
   if (isCheckingAuth) {
@@ -456,11 +492,12 @@ export default function Home() {
                 <label htmlFor="tableName" className="block text-sm font-medium text-gray-700">
                   Table Name
                 </label>
+                <div className="flex gap-2">
                   <select
                     id="tableName"
                     value={tableName}
                     onChange={(e) => setTableName(e.target.value)}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    className="mt-1 flex-1 block pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                     disabled={!selectedConnection || availableTables.length === 0}
                   >
                   <option value="">{availableTables.length > 0 ? 'Select a table' : 'No tables found'}</option>
@@ -470,6 +507,15 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
+                <button
+                  onClick={handleDeleteTable}
+                  disabled={!tableName || isLoading}
+                  className="mt-1 px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
+                  title="Delete the selected table"
+                >
+                  Delete
+                </button>
+              </div>
               </div>
               {error && <p className="text-red-500 mt-4">{error}</p>}
             </div>

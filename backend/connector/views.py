@@ -199,6 +199,68 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=True, methods=['post'])
+    def delete_table(self, request, pk=None):
+        """
+        Delete a table from the connected database.
+        Requires table_name in request body.
+        """
+        connection = self.get_object()
+        table_name = request.data.get('table_name', '').strip()
+        
+        if not table_name:
+            return Response(
+                {"error": "table_name is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from .connectors import PostgresConnector, MySQLConnector, MongoConnector, ClickHouseConnector
+            
+            connector_map = {
+                'postgresql': PostgresConnector,
+                'mysql': MySQLConnector,
+                'mongodb': MongoConnector,
+                'clickhouse': ClickHouseConnector,
+            }
+            
+            ConnectorClass = connector_map.get(connection.db_type)
+            if not ConnectorClass:
+                return Response(
+                    {"error": f"Unsupported database type: {connection.db_type}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            connector = ConnectorClass(connection)
+            connector.connect()
+            
+            # Execute the DROP TABLE statement
+            if connection.db_type == 'mongodb':
+                # MongoDB - drop collection
+                connector.connection[table_name].drop()
+            elif connection.db_type == 'clickhouse':
+                # ClickHouse - execute DROP TABLE
+                connector.connection.execute(f"DROP TABLE IF EXISTS {table_name}")
+            else:  # PostgreSQL, MySQL
+                cursor = connector.connection.cursor()
+                cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+                connector.connection.commit()
+            
+            connector.close()
+            
+            return Response(
+                {"message": f"Table '{table_name}' deleted successfully"},
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class StoredFileViewSet(viewsets.ModelViewSet):
     queryset = StoredFile.objects.all()
     serializer_class = StoredFileSerializer

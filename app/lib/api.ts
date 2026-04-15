@@ -157,6 +157,33 @@ export async function getTables(connectionId: number): Promise<string[]> {
     return response.json();
 }
 
+export async function deleteTable(connectionId: number, tableName: string): Promise<{ message: string }> {
+    const csrfToken = await getCsrfToken();
+    
+    const response = await fetch(`${API_URL}/connections/${connectionId}/delete_table/`, {
+        ...fetchOptions,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ table_name: tableName }),
+    });
+    
+    if (!response.ok) {
+        try {
+            const errorData = await response.json();
+            throw new Error(errorData.error || errorData.detail || `HTTP ${response.status}: Failed to delete table`);
+        } catch (e) {
+            if (e instanceof Error && e.message !== `HTTP ${response.status}: Failed to delete table`) {
+                throw e;
+            }
+            throw new Error(`HTTP ${response.status}: Failed to delete table`);
+        }
+    }
+    return response.json();
+}
+
 export async function getExtractedDataByTable(connectionId: number, tableName: string): Promise<any> {
     const url = `${API_URL}/extracted_data/by_table/?connection_id=${connectionId}&table_name=${tableName}`;
     console.log('📨 Fetching data:', { url });
