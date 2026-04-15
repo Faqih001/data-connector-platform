@@ -762,28 +762,39 @@ class ExtractedDataViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            # Find a StoredFile that matches the criteria
+            # First, try to find a StoredFile that matches the criteria
             # We look for a filename that contains the table name and belongs to the right connection
-            
-            # Build the query
             query = Q(extracted_data__connection_id=connection_id) & Q(filepath__contains=f"_{table_name}_")
 
             # Filter by user if not admin
             if not (user.is_staff or user.is_superuser):
                 query &= Q(user=user)
 
-            # Find the first matching file
             stored_file = StoredFile.objects.filter(query).first()
 
-            if not stored_file:
-                return Response({"error": "No data found for the specified table and connection."}, status=status.HTTP_4_NOT_FOUND)
+            if stored_file and stored_file.extracted_data:
+                # Return existing extracted data
+                extracted_data = stored_file.extracted_data
+                serializer = self.get_serializer(extracted_data)
+                return Response(serializer.data)
 
-            # Get the associated extracted data
-            extracted_data = stored_file.extracted_data
-            serializer = self.get_serializer(extracted_data)
-            return Response(serializer.data)
+            # If no file found, return a response for newly created tables with no data yet
+            return Response(
+                {
+                    "id": None,
+                    "connection": connection_id,
+                    "table_name": table_name,
+                    "data": [],
+                    "created_at": None,
+                    "updated_at": None,
+                    "message": "Table found but no extracted data available yet. Use Extract Data to populate this table."
+                },
+                status=status.HTTP_200_OK
+            )
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def partial_update(self, request, *args, **kwargs):

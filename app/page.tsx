@@ -290,6 +290,39 @@ export default function Home() {
     }
   };
 
+  const handleExtractData = async () => {
+    if (!selectedConnection || !tableName) {
+      toast.error("Please select a connection and table");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Call the extract endpoint
+      await extractData(selectedConnection.id, tableName);
+      
+      // Show success toast
+      toast.success(`Data extracted from "${tableName}" successfully!`);
+      
+      // Fetch the extracted data
+      const result = await getExtractedDataByTable(selectedConnection.id, tableName);
+      setExtractedDataInfo(result);
+      
+      if (result?.data) {
+        // Set data - columns will be auto-computed via useMemo
+        setData(result.data);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to extract data";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Conditional rendering - MUST come last
   // Show loader while checking authentication
   if (isCheckingAuth) {
@@ -516,6 +549,16 @@ export default function Home() {
                   Delete
                 </button>
               </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleExtractData}
+                  disabled={!tableName || isLoading}
+                  className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
+                  title="Extract data from the selected table"
+                >
+                  🔄 Extract Data
+                </button>
               </div>
               {error && <p className="text-red-500 mt-4">{error}</p>}
             </div>
