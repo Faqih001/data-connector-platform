@@ -5,12 +5,16 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataGrid } from "./components/DataGrid";
 import { ConnectionForm } from "./components/ConnectionForm";
 import { FileViewer } from "./components/FileViewer";
+import { useToast } from "./components/ToastContext";
 import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData } from "./lib/api";
 import { DatabaseConnection, StoredFile } from "./types";
 
 const API_URL = 'http://localhost:8001/api';
 
 export default function Home() {
+  // Toast context
+  const toast = useToast();
+  
   // All state declarations - MUST come first
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -210,10 +214,14 @@ export default function Home() {
   ) => {
     try {
       setIsLoading(true);
+      setError(null);
       const newConnection = await createConnection(connection);
       setConnections([...connections, newConnection]);
+      toast.success(`✅ Connection "${newConnection.name}" created successfully!`);
     } catch (err) {
-      setError("Failed to create connection.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to create connection";
+      setError(errorMessage);
+      toast.error(`❌ ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }

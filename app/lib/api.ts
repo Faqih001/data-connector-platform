@@ -6,6 +6,13 @@ const fetchOptions = {
   credentials: 'include' as const,
 };
 
+// Helper function to get CSRF token
+async function getCsrfToken(): Promise<string> {
+  const response = await fetch(`${API_URL}/csrf-token/`, fetchOptions);
+  const data = await response.json();
+  return data.csrfToken;
+}
+
 export async function getConnections(): Promise<DatabaseConnection[]> {
   const response = await fetch(`${API_URL}/connections/`, fetchOptions);
   if (!response.ok) {
@@ -15,16 +22,27 @@ export async function getConnections(): Promise<DatabaseConnection[]> {
 }
 
 export async function createConnection(connection: Omit<DatabaseConnection, 'id' | 'created_at'>): Promise<DatabaseConnection> {
+  const csrfToken = await getCsrfToken();
+  
   const response = await fetch(`${API_URL}/connections/`, {
     ...fetchOptions,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken,
     },
     body: JSON.stringify(connection),
   });
   if (!response.ok) {
-    throw new Error('Failed to create connection');
+    try {
+      const errorData = await response.json();
+      throw new Error(errorData.error || errorData.detail || 'Failed to create connection');
+    } catch (e) {
+      if (e instanceof Error && e.message !== 'Failed to create connection') {
+        throw e;
+      }
+      throw new Error(`Failed to create connection (HTTP ${response.status})`);
+    }
   }
   return response.json();
 }
@@ -35,11 +53,14 @@ export async function extractData(
   batchSize: number = 1000,
   format: 'json' | 'csv' = 'json'
 ): Promise<any[]> {
+  const csrfToken = await getCsrfToken();
+  
   const response = await fetch(`${API_URL}/connections/${connectionId}/extract_data/`, {
     ...fetchOptions,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken,
     },
     body: JSON.stringify({ 
       table_name: tableName,
@@ -48,7 +69,15 @@ export async function extractData(
     }),
   });
   if (!response.ok) {
-    throw new Error('Failed to extract data');
+    try {
+      const errorData = await response.json();
+      throw new Error(errorData.error || errorData.detail || 'Failed to extract data');
+    } catch (e) {
+      if (e instanceof Error && e.message !== 'Failed to extract data') {
+        throw e;
+      }
+      throw new Error('Failed to extract data');
+    }
   }
   const result = await response.json();
   return result.data || result;
@@ -63,11 +92,14 @@ export async function getFiles(): Promise<any[]> {
 }
 
 export async function submitData(fileId: number, data: any[]): Promise<void> {
+    const csrfToken = await getCsrfToken();
+    
     const response = await fetch(`${API_URL}/files/${fileId}/submit_data/`, {
         ...fetchOptions,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
         },
         body: JSON.stringify({ data }),
     });
@@ -77,11 +109,14 @@ export async function submitData(fileId: number, data: any[]): Promise<void> {
 }
 
 export async function shareFile(fileId: number, userIds: number[]): Promise<any> {
+    const csrfToken = await getCsrfToken();
+    
     const response = await fetch(`${API_URL}/files/${fileId}/share/`, {
         ...fetchOptions,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
         },
         body: JSON.stringify({ user_ids: userIds }),
     });
@@ -92,9 +127,14 @@ export async function shareFile(fileId: number, userIds: number[]): Promise<any>
 }
 
 export async function deleteFile(fileId: number): Promise<void> {
+    const csrfToken = await getCsrfToken();
+    
     const response = await fetch(`${API_URL}/files/${fileId}/`, {
         ...fetchOptions,
         method: 'DELETE',
+        headers: {
+            'X-CSRFToken': csrfToken,
+        },
     });
     if (!response.ok) {
         throw new Error('Failed to delete file');
@@ -140,11 +180,14 @@ export async function updateExtractedData(id: number, data: any): Promise<any> {
     });
     
     try {
+        const csrfToken = await getCsrfToken();
+        
         const response = await fetch(`${API_URL}/extracted_data/${id}/`, {
             ...fetchOptions,
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
             },
             body: JSON.stringify({ data }),
         });
