@@ -96,7 +96,8 @@ export default function Home() {
           setAvailableTables(tables);
           setTableName(""); // Reset table name when connection changes
         } catch (err) {
-          console.error("Failed to fetch tables for connection:", selectedConnection.name, err);
+          const errorMessage = err instanceof Error ? err.message : "Failed to fetch tables";
+          toast.error(`${selectedConnection.name}: ${errorMessage}`);
           setAvailableTables([]);
         }
       };

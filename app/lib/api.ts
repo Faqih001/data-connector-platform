@@ -144,7 +144,15 @@ export async function deleteFile(fileId: number): Promise<void> {
 export async function getTables(connectionId: number): Promise<string[]> {
     const response = await fetch(`${API_URL}/connections/${connectionId}/get_tables/`, fetchOptions);
     if (!response.ok) {
-        throw new Error('Failed to fetch tables');
+        try {
+            const errorData = await response.json();
+            throw new Error(errorData.error || errorData.detail || `HTTP ${response.status}: Failed to fetch tables`);
+        } catch (e) {
+            if (e instanceof Error && e.message !== `HTTP ${response.status}: Failed to fetch tables`) {
+                throw e;
+            }
+            throw new Error(`HTTP ${response.status}: Failed to fetch tables`);
+        }
     }
     return response.json();
 }
