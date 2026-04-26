@@ -8,10 +8,8 @@ import { FileViewer } from "./components/FileViewer";
 import { TableCreationForm } from "./components/TableCreationForm";
 import { Loader } from "./components/Loader";
 import { useToast } from "./components/ToastContext";
-import { getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData, deleteTable, deleteConnection } from "./lib/api";
+import { API_URL, getConnections, createConnection, extractData, getFiles, submitData, getTables, getExtractedDataByTable, updateExtractedData, deleteTable, deleteConnection } from "./lib/api";
 import { DatabaseConnection, StoredFile } from "./types";
-
-const API_URL = 'http://localhost:8001/api';
 
 export default function Home() {
   // Toast context
@@ -87,21 +85,12 @@ export default function Home() {
     }
   }, [isLoggedIn]);
 
-  // Fetch tables when connection is selected
+  // Reset tables when connection changes (but don't auto-fetch)
   useEffect(() => {
     if (selectedConnection && isLoggedIn) {
-      const fetchTablesForConnection = async () => {
-        try {
-          const tables = await getTables(selectedConnection.id);
-          setAvailableTables(tables);
-          setTableName(""); // Reset table name when connection changes
-        } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : "Failed to fetch tables";
-          toast.error(`${selectedConnection.name}: ${errorMessage}`);
-          setAvailableTables([]);
-        }
-      };
-      fetchTablesForConnection();
+      // Don't auto-fetch tables - let user click "Get Tables" button
+      setAvailableTables([]);
+      setTableName(""); // Reset table name when connection changes
     } else {
       setAvailableTables([]);
       setTableName("");
@@ -135,12 +124,21 @@ export default function Home() {
 
   // Memos - MUST come third
   const columns = useMemo<ColumnDef<any>[]>(() => {
-    if (data.length === 0) return [];
+    if (data.length === 0) {
+      const schemaColumns = extractedDataInfo?.columns;
+      if (Array.isArray(schemaColumns) && schemaColumns.length > 0) {
+        return schemaColumns.map((key: string) => ({
+          accessorKey: key,
+          header: key,
+        }));
+      }
+      return [];
+    }
     return Object.keys(data[0]).map((key) => ({
       accessorKey: key,
       header: key,
     }));
-  }, [data]);
+  }, [data, extractedDataInfo]);
 
   // Handler functions - CAN come anywhere but after hooks
   const handleLogin = async (e: React.FormEvent) => {
@@ -544,6 +542,37 @@ export default function Home() {
                 </button>
               </div>
             </div>
+
+            {/* Get Tables Button - Manual table fetching */}
+            {selectedConnection && availableTables.length === 0 && (
+              <div className="p-4 border rounded-lg bg-white shadow-sm">
+                <button
+                  onClick={async () => {
+                    if (!selectedConnection) return;
+                    try {
+                      setIsLoading(true);
+                      const tables = await getTables(selectedConnection.id);
+                      setAvailableTables(tables);
+                      if (tables.length === 0) {
+                        toast.info(`No tables found in ${selectedConnection.name}`);
+                      } else {
+                        toast.success(`Found ${tables.length} table(s)`);
+                      }
+                    } catch (err) {
+                      const errorMessage = err instanceof Error ? err.message : "Failed to fetch tables";
+                      toast.error(`${selectedConnection.name}: ${errorMessage}`);
+                      setAvailableTables([]);
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  disabled={!selectedConnection || isLoading}
+                  className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors"
+                >
+                  {isLoading ? '⏳ Fetching Tables...' : '🔍 Get Tables'}
+                </button>
+              </div>
+            )}
 
             {/* Table Creation Section - Show when no tables exist */}
             {selectedConnection && availableTables.length === 0 && (

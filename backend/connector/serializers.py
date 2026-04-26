@@ -11,6 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class DatabaseConnectionSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    password = serializers.CharField(allow_blank=True, required=False)
     
     class Meta:
         model = DatabaseConnection

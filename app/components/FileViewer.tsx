@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { StoredFile, User } from '@/app/types';
-import { API_URL } from '@/app/lib/api';
+import { API_URL, deleteFile } from '@/app/lib/api';
 import { useToast } from './ToastContext';
 
 interface FileViewerProps {
@@ -239,6 +239,47 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
     );
   };
 
+  const handlePermanentDeleteDeletedFiles = async () => {
+    if (deletedFiles.length === 0) return;
+
+    const confirmDelete = window.confirm(
+      `Permanently delete ${deletedFiles.length} recently deleted file(s)? This cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    const filesToDelete = [...deletedFiles];
+    let successCount = 0;
+    let failCount = 0;
+    const failedFileIds = new Set<number>();
+
+    for (const item of filesToDelete) {
+      try {
+        await deleteFile(item.file.id);
+        successCount += 1;
+      } catch (error) {
+        console.error(`Failed to permanently delete file ${item.file.id}:`, error);
+        failCount += 1;
+        failedFileIds.add(item.file.id);
+      }
+    }
+
+    // Keep only files that failed to delete permanently.
+    setDeletedFiles((prev) =>
+      prev.filter((item) => failedFileIds.has(item.file.id))
+    );
+
+    if (successCount > 0) {
+      toast.success(`Permanently deleted ${successCount} file(s).`);
+    }
+    if (failCount > 0) {
+      toast.error(`${failCount} file(s) could not be permanently deleted.`);
+    }
+
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
+
   const handleShareClick = (fileId: number) => {
     setShareModal({ open: true, fileId });
     setShareEmail('');
@@ -379,49 +420,90 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
       const fileName = getFileNameFromPath(file.filepath);
       const fileUrl = `${API_URL}/files/${file.id}/download/`;
       
+      toast.success('Starting download...');
+      
       const response = await fetch(fileUrl, {
-        credentials: 'include'
+        credentials: 'include',
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
       });
       
-      let jsonData: any;
-      
       if (!response.ok) {
+        const errorText = await response.text();
+        let errorMsg = `HTTP ${response.status}`;
+        
         try {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch file`);
+          const errorData = JSON.parse(errorText);
+          errorMsg = errorData.error || errorMsg;
         } catch (e) {
-          throw new Error(`HTTP ${response.status}: Failed to fetch file`);
+          errorMsg = errorText || errorMsg;
         }
+        
+        throw new Error(`Failed to download: ${errorMsg}`);
       }
       
-      jsonData = await response.json();
+      const jsonData = await response.json();
       
+      if (!Array.isArray(jsonData) && typeof jsonData === 'object' && jsonData !== null) {
+        // If it's a single object, wrap it in an array
+        if (jsonData.data && Array.isArray(jsonData.data)) {
+          // Response has data wrapper
+          const data = jsonData.data;
+          downloadAsFile(data, fileName, format);
+        } else {
+          downloadAsFile([jsonData], fileName, format);
+        }
+      } else if (Array.isArray(jsonData)) {
+        downloadAsFile(jsonData, fileName, format);
+      } else {
+        throw new Error('Unexpected response format from server');
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('Download failed:', errorMsg);
+      toast.error(`Failed to download file: ${errorMsg}`);
+    }
+  };
+
+  const downloadAsFile = (jsonData: any, fileName: string, format: 'json' | 'csv') => {
+    try {
       let data: string;
       let mimeType: string;
       let extension: string;
       
       if (format === 'csv') {
-        data = jsonToCsv(jsonData);
-        mimeType = 'text/csv';
+        data = jsonToCsv(Array.isArray(jsonData) ? jsonData : [jsonData]);
+        mimeType = 'text/csv;charset=utf-8;';
         extension = 'csv';
       } else {
-        data = JSON.stringify(jsonData, null, 2);
-        mimeType = 'application/json';
+        data = JSON.stringify(Array.isArray(jsonData) ? jsonData : [jsonData], null, 2);
+        mimeType = 'application/json;charset=utf-8;';
         extension = 'json';
       }
       
       const blob = new Blob([data], { type: mimeType });
-      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
-      link.download = `${fileName.replace('.json', '')}.${extension}`;
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${fileName.replace(/\.[^/.]+$/, '')}.${extension}`);
+      link.style.visibility = 'hidden';
+      
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      toast.success(`File downloaded as ${extension.toUpperCase()}`);
     } catch (err) {
-      console.error('Download failed:', err);
-      toast.error(`Failed to download file: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('File download error:', errorMsg);
+      toast.error(`Error creating download: ${errorMsg}`);
     }
   };
 
@@ -575,7 +657,27 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
                             Format: <span className="font-medium uppercase">{file.format_type || 'json'}</span>
                           </div>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-wrap">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(file, 'json');
+                            }}
+                            className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                            title="Download as JSON"
+                          >
+                            📥 JSON
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(file, 'csv');
+                            }}
+                            className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                            title="Download as CSV"
+                          >
+                            📥 CSV
+                          </button>
                           {access?.can_share && (
                             <button
                               onClick={() => handleShareClick(file.id)}
@@ -643,7 +745,16 @@ export function FileViewer({ files, onFileSelect, currentUser, onRefresh }: File
           {/* Deleted Files Section (5-minute restoration window) */}
           {deletedFiles.length > 0 && (
             <div className="mt-6 pt-6 border-t">
-              <h3 className="text-sm font-bold mb-3 text-orange-600">🗑️ Recently Deleted (Restore within 5 minutes)</h3>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h3 className="text-sm font-bold text-orange-600">🗑️ Recently Deleted (Restore within 5 minutes)</h3>
+                <button
+                  onClick={handlePermanentDeleteDeletedFiles}
+                  className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 whitespace-nowrap"
+                  title="Permanently delete all recently deleted files"
+                >
+                  ❌ Permanent Delete
+                </button>
+              </div>
               <ul className="space-y-2">
                 {deletedFiles.map((item) => {
                   const fileName = getFileNameFromPath(item.file.filepath);

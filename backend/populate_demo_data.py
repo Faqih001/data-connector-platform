@@ -62,13 +62,13 @@ connection_templates = {
         'db_type': 'postgresql',
         'host': 'localhost',
         'port': 5432,
-        'database_name': 'test_db',
+        'database_name': 'dataconnector',
     },
     'mysql': {
         'db_type': 'mysql',
         'host': 'localhost',
         'port': 3306,
-        'database_name': 'test_database',
+        'database_name': 'testdb',
     },
     'mongodb': {
         'db_type': 'mongodb',
@@ -87,12 +87,12 @@ connection_templates = {
 # Define credentials for each database type
 connection_credentials = {
     'postgresql': {
-        'username': 'postgres',
-        'password': 'postgres',
+        'username': 'user',
+        'password': 'password',
     },
     'mysql': {
         'username': 'root',
-        'password': 'root',
+        'password': 'rootpassword',
     },
     'mongodb': {
         'username': 'admin',

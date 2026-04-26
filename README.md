@@ -12,11 +12,14 @@ This is a full-stack web application that allows users to connect to multiple da
 - ✅ Access control system active
 - ✅ Modern UI with modal dialogs
 - ✅ 4 demo users ready to use
-- ✅ 112+ sample data files pre-loaded
+- ✅ Fresh start approach (no pre-populated data)
+- ✅ Data generation on extraction
+- ✅ Auto-refresh UI (1-second delay)
+- ✅ 24-hour automatic cleanup
 - ✅ Docker containerization complete
 - ✅ Unit tests included
 - ✅ Complete documentation
-- ✅ **NEW: Delete connection with cascade cleanup**
+- ✅ **NEW: Fresh start workflow - connections and files generated on-demand**
 - ✅ Ready for production deployment
 
 ## 🎯 Getting Started (Choose One)

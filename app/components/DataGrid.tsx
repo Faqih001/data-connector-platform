@@ -6,7 +6,7 @@ import {
   useReactTable,
   ColumnDef,
 } from '@tanstack/react-table';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal } from './Modal';
 
 interface EditableCellProps {
@@ -54,6 +54,7 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
   const [isSaving, setIsSaving] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [newColumnName, setNewColumnName] = useState('');
+  const [dynamicColumns, setDynamicColumns] = useState<string[]>([]);
   const [modal, setModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -64,15 +65,29 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
 
   useEffect(() => {
     setData(initialData);
+    // Reset dynamic columns when initial data changes
+    if (initialData.length > 0) {
+      setDynamicColumns([]);
+    }
   }, [initialData]);
 
   const defaultColumn: Partial<ColumnDef<TData>> = {
     cell: EditableCell,
   };
 
+  // Compute combined columns (original + dynamic)
+  const combinedColumns = useMemo(() => {
+    const dynCols: ColumnDef<TData>[] = dynamicColumns.map(colName => ({
+      accessorKey: colName,
+      header: colName,
+      cell: EditableCell,
+    })) as ColumnDef<TData>[];
+    return [...columns, ...dynCols];
+  }, [columns, dynamicColumns]);
+
   const table = useReactTable({
     data,
-    columns,
+    columns: combinedColumns,
     defaultColumn,
     getCoreRowModel: getCoreRowModel(),
     meta: {
@@ -119,11 +134,27 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
       return;
     }
     const columnNameToAdd = newColumnName.trim();
+    
+    // Check if column already exists
+    if (dynamicColumns.includes(columnNameToAdd) || (data.length > 0 && columnNameToAdd in (data[0] as object))) {
+      setModal({
+        isOpen: true,
+        title: '⚠️ Column Already Exists',
+        message: `Column "${columnNameToAdd}" already exists.`,
+        type: 'warning',
+      });
+      return;
+    }
+    
     const updatedData = data.map(row => ({
       ...row,
       [columnNameToAdd]: '',
     })) as TData[];
     setData(updatedData);
+    
+    // Add to dynamic columns list
+    setDynamicColumns([...dynamicColumns, columnNameToAdd]);
+    
     setNewColumnName('');
     setModal({
       isOpen: true,
@@ -139,6 +170,9 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
       return rest;
     }) as TData[];
     setData(updatedData);
+    
+    // Remove from dynamic columns list if it's there
+    setDynamicColumns(dynamicColumns.filter(col => col !== columnName));
   };
 
   const handleRowSelect = (rowIndex: number) => {
@@ -279,17 +313,56 @@ export function DataGrid<TData>({ data: initialData, columns, onSave }: DataGrid
                     </th>
                   );
                 })}
-              {/* Render original columns if no data yet */}
-              {data.length === 0 &&
-                columns.map((col: any) => (
+              {/* Render original columns if no data yet, plus any dynamic columns */}
+              {data.length === 0 && (
+                <>
+                  {columns.map((col: any) => (
+                    <th
+                      key={col.accessorKey}
+                      className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider bg-gray-50 relative group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{typeof col.header === 'function' ? col.accessorKey : (col.header as string)}</span>
+                        <button
+                          onClick={() => handleDeleteColumn(col.accessorKey)}
+                          className="ml-2 opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-xs"
+                          title="Delete column"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </th>
+                  ))}
+                  {dynamicColumns.map((colName) => (
+                    <th
+                      key={colName}
+                      className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider bg-gray-50 relative group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{colName}</span>
+                        <button
+                          onClick={() => handleDeleteColumn(colName)}
+                          className="ml-2 opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-xs"
+                          title="Delete column"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </th>
+                  ))}
+                </>
+              )}
+              {/* Render dynamic columns when there is data */}
+              {data.length > 0 &&
+                dynamicColumns.map((colName) => (
                   <th
-                    key={col.accessorKey}
+                    key={colName}
                     className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider bg-gray-50 relative group"
                   >
                     <div className="flex items-center justify-between">
-                      <span>{typeof col.header === 'function' ? col.accessorKey : (col.header as string)}</span>
+                      <span>{colName}</span>
                       <button
-                        onClick={() => handleDeleteColumn(col.accessorKey)}
+                        onClick={() => handleDeleteColumn(colName)}
                         className="ml-2 opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-xs"
                         title="Delete column"
                       >

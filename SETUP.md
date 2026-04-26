@@ -8,96 +8,1366 @@ Complete setup instructions for the Data Connector Platform with step-by-step pr
 
 ## 📑 Table of Contents
 
-1. [System Requirements & Verification](#system-requirements-and-verification)
-2. [Prerequisites Check](#prerequisites-check)
-3. [Quick Start (Automated)](#quick-start-automated)
-4. [Manual Setup (Sequential Steps)](#manual-setup-sequential-steps)
-5. [Database Setup & Verification](#database-setup-and-verification)
-6. [Starting the Application](#starting-the-application)
-7. [Docker Setup (Start, Restart, Troubleshoot)](#docker-setup-start-restart-troubleshoot)
+1. [Quick Command Reference](#quick-command-reference)
+2. [System Requirements & Prerequisites](#system-requirements--prerequisites)
+3. [Setup Path Selection](#setup-path-selection)
+4. [Path A: Local Development Setup (Recommended for Dev)](#path-a-local-development-setup)
+5. [Path B: Docker Setup (Recommended for Testing)](#path-b-docker-setup)
+6. [Database Configuration & Connections](#database-configuration--connections)
+7. [Verification & Testing](#verification--testing)
 8. [Demo Credentials](#demo-credentials)
-9. [Development Tips](#development-tips)
-10. [Troubleshooting](#troubleshooting)
-11. [Verification Checklist](#verification-checklist)
+9. [Development Commands](#development-commands)
+10. [Debugging Commands](#debugging-commands)
+11. [Troubleshooting Guide](#troubleshooting-guide)
 
 ---
 
-## 🖥️ System Requirements and Verification
+## ⚡ Quick Command Reference
 
-### Minimum Requirements
-- **Node.js:** v16 or higher
-- **Python:** v3.8 or higher
+**Use this section for copy-paste commands** - All verified and tested.
+
+### Verify System Ready
+```bash
+./verify-setup.sh
+```
+
+### Path A: Local Development (One Command Setup)
+```bash
+./quick-start.sh
+```
+Then in separate terminals:
+```bash
+# Terminal 1 - Frontend
+npm run dev
+
+# Terminal 2 - Backend
+cd backend && source .venv/bin/activate && python manage.py runserver
+```
+
+### Path B: Docker (One Command Setup)
+```bash
+./docker-setup.sh
+# Everything runs automatically - open http://localhost:3001
+```
+
+### Common Database Commands
+```bash
+# PostgreSQL
+docker-compose exec db psql -U user -d dataconnector -c "SELECT 1;"
+
+# MySQL
+docker-compose exec mysql mysql -u user -p'password' -e "SELECT 1;"
+
+# MongoDB
+docker-compose exec mongo mongosh
+
+# ClickHouse
+docker-compose exec clickhouse clickhouse-client
+```
+
+### Service Management
+```bash
+# View all running services
+docker-compose ps
+
+# View detailed logs
+docker-compose logs -f backend
+
+# Stop all services
+docker-compose stop
+
+# Start services again
+docker-compose start
+
+# Restart specific service
+docker-compose restart mysql
+
+# Complete reset
+docker-compose down -v && docker-compose up -d
+```
+
+### Django Backend Commands
+```bash
+cd backend
+source .venv/bin/activate
+
+# Run development server
+python manage.py runserver
+
+# Run migrations
+python manage.py migrate --noinput
+
+# Create superuser
+python manage.py createsuperuser
+
+# Run tests
+python manage.py test
+
+# Django shell
+python manage.py shell
+
+# Check system
+python manage.py check
+```
+
+### Frontend Commands
+```bash
+# Development
+npm run dev
+
+# Production build
+npm run build
+
+# Start production server
+npm start
+
+# Lint
+npm run lint
+
+# On different port
+npm run dev -- -p 3001
+```
+
+### Stop Everything
+```bash
+# Kill all processes (macOS/Linux)
+lsof -ti:3000 | xargs kill -9      # Frontend
+lsof -ti:8000 | xargs kill -9      # Backend
+
+# Or stop Docker
+docker-compose down
+
+# Complete reset
+docker-compose down -v
+```
+
+---
+
+## 🖥️ System Requirements & Prerequisites
+
+### Minimum System Requirements
+- **Node.js:** v16 or higher (v18+ recommended)
+- **Python:** v3.8 or higher (v3.10+ recommended)
 - **npm:** v7 or higher
 - **pip:** v21 or higher
-- **Docker & Docker Compose:** (optional, for Docker setup)
+- **RAM:** 4GB minimum (8GB+ recommended for Docker)
+- **Disk Space:** 2GB minimum
 
-### Recommended Requirements
-- **Node.js:** v18 LTS or higher
-- **Python:** v3.10 or higher
-- **RAM:** 4GB minimum (8GB recommended)
-- **Disk Space:** 500MB minimum
+### For Docker Setup (Optional)
+- **Docker:** v20+ 
+- **Docker Compose:** v1.29+ (or Docker Desktop with Compose v2)
+- **Docker Memory Allocation:** 4GB minimum
 
 ### Supported Platforms
 - ✅ Linux (Ubuntu 20.04+, Debian 11+)
 - ✅ macOS (10.15+)
-- ✅ Windows 10/11 (with WSL2 recommended)
+- ✅ Windows 10/11 (WSL2 required for Docker)
 
----
+### Step 1: Verify Required Tools
 
-## ✅ Prerequisites Check
-
-### Step 1: Verify Required Tools Are Installed
-
-Run these commands to verify your system:
+Run these commands:
 
 ```bash
-# Check Node.js
-node --version    # Should be v16 or higher
-npm --version     # Should be v7 or higher
+# Check Node.js and npm
+node --version     # Should be v16+
+npm --version      # Should be v7+
 
 # Check Python
-python3 --version # Should be v3.8 or higher
-pip3 --version    # Should be v21 or higher
+python3 --version  # Should be v3.8+
+pip3 --version     # Should be v21+
 
 # (Optional) Check Docker
-docker --version  # Only needed for Docker setup
+docker --version   # Only if using Docker
 docker-compose --version
 ```
 
-**Expected Output Examples:**
-```
-v18.17.0          # Node.js
-9.6.4             # npm
-Python 3.10.12    # Python 3
-pip 23.0.1        # pip
-```
+### Step 2: Install Missing Tools (if needed)
 
-### Step 2: If Tools Are Missing
-
-#### On Ubuntu/Debian:
+**On Ubuntu/Debian:**
 ```bash
-# Update package manager
 sudo apt update
-
-# Install Node.js & npm
 curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs npm
+sudo apt install -y nodejs npm python3 python3-pip python3-venv git
+```
 
-# Install Python & pip
-sudo apt install -y python3 python3-pip python3-venv
+**On macOS (with Homebrew):**
+```bash
+brew install node python3 git
+```
 
-# (Optional) Install Docker
+**Install Docker (Linux):**
+```bash
 sudo apt install -y docker.io docker-compose
 sudo usermod -aG docker $USER
+# Log out and back in for group changes to take effect
 ```
 
-#### On macOS (with Homebrew):
-```bash
-# Install Node.js & npm
-brew install node
+---
 
-# Install Python & pip
-brew install python3
+## 🚀 Setup Path Selection
+
+Choose one setup path based on your use case:
+
+| Path | Use Case | Best For | Setup Time |
+|------|----------|----------|-----------|
+| **Path A: Local Development** | Running frontend and backend locally with databases | Development, debugging, testing | 5-10 min |
+| **Path B: Docker** | Running entire stack in containers | CI/CD, production-like testing | 10-20 min |
+
+---
+
+## Path A: Local Development Setup
+
+### Overview
+- Frontend: Runs on localhost:3000
+- Backend: Runs on localhost:8000
+- Databases: Run in Docker containers only (optional, or connect to external DBs)
+- Total Setup Time: ~5-10 minutes
+
+### A1: Clone & Navigate to Project
+
+```bash
+cd /path/to/data-connector-platform
+pwd  # Verify you're in the project root
+```
+
+### A2: Frontend Setup
+
+```bash
+# Step 1: Install Node.js dependencies
+npm install
+
+# Step 2: Verify installation
+npm list next react react-dom  # Should show versions without errors
+
+# Step 3: Build Next.js (optional, for production check)
+npm run build
+
+# Output should show successful build without errors
+```
+
+### A3: Backend Setup
+
+```bash
+# Step 1: Navigate to backend directory
+cd backend
+
+# Step 2: Create Python virtual environment
+python3 -m venv .venv
+
+# Step 3: Activate virtual environment
+# On Linux/macOS:
+source .venv/bin/activate
+# On Windows (PowerShell):
+# .venv\Scripts\Activate.ps1
+# On Windows (Command Prompt):
+# .venv\Scripts\activate.bat
+
+# Expected: Prompt changes to (.venv) prefix
+
+# Step 4: Upgrade pip
+pip install --upgrade pip
+
+# Step 5: Install Python dependencies
+pip install -r requirements.txt
+
+# Step 6: Verify installation
+pip list | grep -E "django|psycopg2|mysql-connector|pymongo|clickhouse"
+```
+
+### A4: Database Setup (Using Docker)
+
+**Start Only Database Services:**
+
+```bash
+# From project root
+cd /path/to/data-connector-platform
+
+# Start only the databases (no frontend/backend services)
+docker-compose up -d db mysql mongo clickhouse
+
+# Wait 10-15 seconds for databases to initialize
+sleep 15
+
+# Verify databases are running
+docker-compose ps
+
+# Expected output:
+# NAME                STATUS          PORTS
+# postgres_db         Up              0.0.0.0:5433->5432/tcp
+# mysql               Up              0.0.0.0:3307->3306/tcp
+# mongo               Up              0.0.0.0:27018->27017/tcp
+# clickhouse          Up              0.0.0.0:8124->8123/tcp, 0.0.0.0:9001->9000/tcp
+```
+
+### A5: Backend Database Migrations
+
+```bash
+# From backend directory (with virtual env activated)
+cd backend
+
+# Run Django migrations
+python manage.py migrate --noinput
+
+# Expected: "Operations to perform... OK"
+
+# Create superuser (optional, for admin panel)
+python manage.py createsuperuser
+
+# Populate demo data (optional)
+python populate_demo_data.py
+```
+
+### A6: Start Local Frontend & Backend
+
+**Terminal 1 - Frontend:**
+```bash
+# From project root
+npm run dev
+
+# Expected output:
+# > next dev
+# - Local: http://localhost:3000
+```
+
+**Terminal 2 - Backend:**
+```bash
+# From backend directory
+source .venv/bin/activate
+python manage.py runserver
+
+# Expected output:
+# Starting development server at http://127.0.0.1:8000/
+```
+
+**Terminal 3 - Verify Databases (optional):**
+```bash
+# Check database connections
+docker-compose ps
+
+# Test PostgreSQL connection
+docker-compose exec db psql -U user -d dataconnector -c "SELECT 1;"
+
+# Test MySQL connection  
+docker-compose exec mysql mysql -u user -p'password' -e "SELECT 1;"
+```
+
+### A7: Verify Everything Works
+
+Open browser to [http://localhost:3000](http://localhost:3000) and verify:
+- ✅ Frontend loads without errors
+- ✅ Page navigation works
+- ✅ Backend API responds (check Network tab in DevTools)
+
+---
+
+## Path B: Docker Setup
+
+### ⚠️ Important: Known Issues & Solutions
+
+**Issue 1: SIGBUS Error During Frontend Build**
+- **Cause:** Memory/resource constraints in Docker
+- **Solutions:**
+  - Increase Docker memory allocation to 4-6GB
+  - Build frontend locally first, then use Docker for services only
+  - Pre-build and cache the image
+
+**Issue 2: Services Not Starting**
+- **Cause:** Build failure prevents service startup
+- **Solution:** Build and test frontend locally (Path A) first
+
+### B1: Docker Configuration
+
+**For Docker Desktop (Mac/Windows):**
+1. Open Docker Desktop → Preferences/Settings
+2. Navigate to Resources
+3. Set:
+   - **Memory:** 6GB minimum (8GB recommended)
+   - **CPUs:** 4 minimum
+   - **Disk:** 20GB minimum
+4. Click "Apply & Restart"
+
+**For Linux:**
+```bash
+# Check current memory allocation
+docker system info | grep -E "Memory|CPUs"
+```
+
+### B2: Fix Docker-Compose File
+
+**Remove obsolete version key:**
+
+```bash
+# From project root
+sed -i '1s/version:.*//' docker-compose.yml
+
+# Or manually edit and remove line: version: '3.8'
+```
+
+### B3: Build Frontend Locally (Recommended)
+
+```bash
+# From project root - this avoids SIGBUS in Docker
+npm install
+npm run build
+
+# Expected: Build successful, .next folder created
+# Size: ~100-200MB
+```
+
+### B4: Start Docker Services
+
+```bash
+# From project root
+
+# Option 1: Build and start everything (may fail due to build issues)
+docker-compose up -d
+
+# Option 2: Start only database services (RECOMMENDED)
+docker-compose up -d db mysql mongo clickhouse backend
+
+# Wait for services to start
+sleep 20
+
+# Verify all services
+docker-compose ps
+```
+
+### B5: Check Service Health
+
+```bash
+# View logs for specific service
+docker-compose logs -f db      # PostgreSQL
+docker-compose logs -f mysql   # MySQL
+docker-compose logs -f backend # Django
+
+# Stop viewing logs: Ctrl+C
+
+# Check if backend migrations ran
+docker-compose exec backend python manage.py showmigrations
+
+# Access services
+docker-compose exec db psql -U user -d dataconnector
+docker-compose exec mysql mysql -u user -p'password'
+```
+
+### B6: Stopping & Cleanup
+
+```bash
+# Stop all services
+docker-compose stop
+
+# Stop and remove containers
+docker-compose down
+
+# Stop and remove everything including volumes
+docker-compose down -v
+
+# View current images
+docker images | grep data-connector
+```
+
+---
+
+## Database Configuration & Connections
+
+### Database Details
+
+| Database | Service | Port (Local) | Port (Docker) | User | Password | Database |
+|----------|---------|------------|---------------|------|----------|----------|
+| PostgreSQL | db | 5433 | 5432 | user | password | dataconnector |
+| MySQL | mysql | 3307 | 3306 | user | password | testdb |
+| MongoDB | mongo | 27018 | 27017 | (none) | (none) | test |
+| ClickHouse | clickhouse | 8124 | 8123 | (default) | (none) | default |
+
+### Connection Strings
+
+**From Local Environment:**
+```
+PostgreSQL:  postgresql://user:password@localhost:5433/dataconnector
+MySQL:       mysql://user:password@localhost:3307/testdb
+MongoDB:     mongodb://localhost:27018/test
+ClickHouse:  http://localhost:8124
+```
+
+**From Docker Backend Service:**
+```
+PostgreSQL:  postgresql://user:password@db:5432/dataconnector
+MySQL:       mysql://user:password@mysql:3306/testdb
+MongoDB:     mongodb://mongo:27017/test
+ClickHouse:  http://clickhouse:8123
+```
+
+### Manual Database Connection Test
+
+```bash
+# PostgreSQL
+psql -h localhost -p 5433 -U user -d dataconnector -c "SELECT 1;"
+
+# MySQL
+mysql -h localhost -P 3307 -u user -p'password' -e "SELECT 1;"
+
+# MongoDB (requires mongosh)
+mongosh --host localhost:27018
+
+# ClickHouse (requires curl)
+curl http://localhost:8124/?query=SELECT%201
+```
+
+---
+
+## Verification & Testing
+
+### V1: Frontend Verification
+
+```bash
+# Check if Next.js build is successful
+npm run build
+
+# Expected: "✓ Compiled successfully"
+# Look for: ".next" folder created
+
+# Check if dev server starts
+npm run dev
+
+# Expected: "✓ Ready in X.XXs"
+# Open: http://localhost:3000
+```
+
+### V2: Backend Verification
+
+```bash
+cd backend
+source .venv/bin/activate
+
+# Check Django setup
+python manage.py check
+
+# Expected: "System check identified no issues (0 silenced)"
+
+# Check database connectivity
+python manage.py dbshell
+
+# Expected: psql/mysql prompt opens
+```
+
+### V3: Database Verification
+
+```bash
+# Run backend tests
+cd backend
+python manage.py test connector.tests
+
+# Run integration tests (if available)
+cd tests
+python test_all_databases.py
+
+# Expected: All tests pass with status OK
+```
+
+### V4: Full Stack Verification
+
+```bash
+# Ensure all services running (Docker)
+docker-compose ps
+
+# Check backend API
+curl http://localhost:8000/api/
+
+# Check frontend
+curl http://localhost:3000
+
+# Check logs for errors
+docker-compose logs backend | head -20
+```
+
+---
+
+## Demo Credentials
+
+### Fresh Start Approach
+
+The system starts **clean with no pre-populated connections or files**. This allows users to:
+- Create fresh connections
+- Extract data on-demand
+- Control what data is stored
+- Maintain automatic cleanup of old files
+
+### Demo Users Available
+
+| Username | Password | Role |
+|----------|----------|------|
+| **admin** | admin123 | Full system access |
+| **john_sales** | john123 | Sales user |
+| **sarah_analytics** | sarah456 | Analytics user |
+| **mike_reporting** | mike789 | Reporting user |
+
+### How Data is Generated
+
+**On-Demand Workflow:**
+1. **Create Connection** → Select database type → Enter credentials
+2. **Extract Data** → Choose table → Click Extract
+3. **Auto-Generated** → Stored file created → JSON file saved
+4. **Auto-Refresh** → UI updates in 1 second → New files visible
+5. **Auto-Cleanup** → Files > 24h old deleted automatically
+
+### Admin Panel
+
+Access the Django admin panel:
+- **URL:** http://localhost:8001/admin/
+- **Username:** admin
+- **Password:** admin123
+
+---
+
+## Development Commands
+
+### Frontend Commands
+
+```bash
+# Development server
+npm run dev
+
+# Production build
+npm run build
+
+# Start production server
+npm start
+
+# Run linter
+npm run lint
+```
+
+### Backend Commands
+
+```bash
+# Activate virtual environment
+source backend/.venv/bin/activate  # Linux/macOS
+backend\.venv\Scripts\activate     # Windows
+
+# Run development server
+python manage.py runserver
+
+# Run migrations
+python manage.py migrate
+
+# Create superuser
+python manage.py createsuperuser
+
+# Run tests
+python manage.py test
+
+# Shell for database interaction
+python manage.py shell
+```
+
+### Docker Commands
+
+```bash
+# View running services
+docker-compose ps
+
+# View logs
+docker-compose logs -f [service-name]
+
+# Execute command in container
+docker-compose exec [service-name] [command]
+
+# Stop all services
+docker-compose stop
+
+# Remove all containers
+docker-compose down
+
+# Rebuild services
+docker-compose build --no-cache
+
+# Complete reset
+docker-compose down -v && docker-compose up -d
+```
+
+---
+
+## Debugging Commands
+
+### Check System & Prerequisites
+
+```bash
+# Run complete system verification
+./verify-setup.sh
+
+# Check specific components
+node --version              # Node.js version
+npm --version               # npm version
+python3 --version           # Python version
+pip3 --version              # pip version
+docker --version            # Docker version
+docker-compose --version    # Docker Compose version
+
+# Check file existence
+ls -la package.json
+ls -la backend/requirements.txt
+ls -la docker-compose.yml
+ls -la Dockerfile.frontend
+ls -la Dockerfile.backend
+```
+
+### View Application Logs
+
+```bash
+# Frontend logs (if running npm run dev)
+# Logs appear in the terminal where you ran npm run dev
+# Look for: "✓ Ready in X.XXs" or error messages
+
+# Backend logs (if running python manage.py runserver)
+# Logs appear in the terminal where you ran the server
+# Look for: "Starting development server" or errors
+
+# Docker container logs
+docker-compose logs backend              # Backend service
+docker-compose logs frontend             # Frontend service
+docker-compose logs db                   # PostgreSQL
+docker-compose logs mysql                # MySQL
+docker-compose logs mongo                # MongoDB
+docker-compose logs clickhouse            # ClickHouse
+
+# Stream logs (follow mode)
+docker-compose logs -f backend            # Follow backend logs
+docker-compose logs -f --tail=100 db      # Last 100 lines
+
+# View logs with timestamps
+docker-compose logs --timestamps backend
+```
+
+### Check Service Status & Health
+
+```bash
+# Docker services status
+docker-compose ps                        # Show all services
+docker-compose ps backend                # Show specific service
+docker ps -a                             # All containers on system
+
+# Check service logs for startup errors
+docker-compose logs backend | grep -i error
+docker-compose logs mysql | grep -i error
+docker-compose logs db | grep -i error
+
+# Health checks
+docker inspect container-name --format='{{.State.Health.Status}}'
+
+# Check if services are responding
+curl http://localhost:3000               # Frontend
+curl http://localhost:8000/api/          # Backend
+curl http://localhost:8124               # ClickHouse
+```
+
+### Database Debugging
+
+```bash
+# PostgreSQL connection test
+psql -h localhost -p 5433 -U user -d dataconnector -c "SELECT 1;"
+docker-compose exec db psql -U user -d dataconnector -c "\dt"  # List tables
+
+# MySQL connection test
+mysql -h localhost -P 3307 -u user -p'password' -e "SELECT 1;"
+docker-compose exec mysql mysql -u user -p'password' -e "SHOW TABLES;"
+
+# MongoDB connection test
+mongosh --host localhost:27018
+# Then: show databases
+
+# ClickHouse connection test
+curl http://localhost:8124/?query=SELECT%201
+docker-compose exec clickhouse clickhouse-client -q "SELECT 1"
+```
+
+### Port & Process Debugging
+
+```bash
+# Check which processes are using specific ports
+lsof -i :3000              # Port 3000 (frontend)
+lsof -i :8000              # Port 8000 (backend)
+lsof -i :5433              # Port 5433 (PostgreSQL)
+lsof -i :3307              # Port 3307 (MySQL)
+lsof -i :27018             # Port 27018 (MongoDB)
+lsof -i :8124              # Port 8124 (ClickHouse)
+
+# Kill process using port
+kill -9 <PID>
+
+# On Windows
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+```
+
+### Python Virtual Environment Debugging
+
+```bash
+cd backend
+
+# Check virtual environment status
+ls -la .venv               # Check if .venv exists
+which python               # Show active Python
+which pip                  # Show active pip
+
+# Verify virtual environment is activated
+source .venv/bin/activate
+echo $VIRTUAL_ENV          # Should show path to .venv
+
+# List installed packages
+pip list
+pip list | grep django
+pip list | grep psycopg2
+
+# Check specific package info
+pip show django
+pip show psycopg2-binary
+```
+
+### npm & Node.js Debugging
+
+```bash
+# Check npm cache
+npm cache verify
+
+# Check npm config
+npm config list
+
+# List globally installed packages
+npm list -g --depth=0
+
+# Check node_modules size
+du -sh node_modules
+
+# Verify key packages
+npm list next
+npm list react
+npm list react-dom
+
+# Check package-lock.json integrity
+npm ci --dry-run
+```
+
+### Django Debugging
+
+```bash
+cd backend
+source .venv/bin/activate
+
+# Check Django setup
+python manage.py check
+
+# Run migrations with verbose output
+python manage.py migrate --verbosity=2
+
+# Show migration status
+python manage.py showmigrations
+
+# Check database connection
+python manage.py dbshell
+# Then: SELECT 1; (or equivalent for your DB)
+
+# Django debug mode
+DEBUG=True python manage.py runserver
+
+# Check admin panel works
+python manage.py createsuperuser
+# Then access: http://localhost:8000/admin
+
+# Run specific test
+python manage.py test connector.tests.TestModelName -v 2
+
+# Collect static files
+python manage.py collectstatic --noinput
+```
+
+### Docker Debugging
+
+```bash
+# Build with verbose output
+docker-compose build --verbose
+
+# Check Docker daemon
+docker system info
+
+# Check Docker resources
+docker stats              # Real-time resource usage
+
+# Inspect container
+docker inspect container-name
+docker inspect container-name --format='{{.Config.Env}}'
+
+# View container filesystem
+docker-compose exec backend ls -la
+
+# Execute commands in container
+docker-compose exec backend python -c "import django; print(django.__version__)"
+docker-compose exec backend env | grep DATABASE
+
+# Remove all stopped containers
+docker container prune
+
+# Check Docker volumes
+docker volume ls
+docker volume inspect volume-name
+
+# Check Docker networks
+docker network ls
+docker network inspect app-network
+```
+
+### Memory & Disk Usage
+
+```bash
+# Check disk space
+df -h
+
+# Check directory sizes
+du -sh .
+du -sh node_modules
+du -sh .next
+du -sh backend/.venv
+
+# Check memory usage
+free -h                   # Linux
+vm_stat                   # macOS
+Get-Volume                # Windows PowerShell
+
+# Check swap
+swapon --show             # Linux
+```
+
+### Network & Connectivity Debugging
+
+```bash
+# Check network connectivity
+ping localhost
+ping google.com
+
+# DNS resolution
+nslookup localhost
+dig localhost
+
+# Port connectivity
+nc -zv localhost 3000
+nc -zv localhost 8000
+nc -zv localhost 5433
+
+# Full network info
+netstat -tuln | grep LISTEN
+ifconfig                  # IP addresses
+```
+
+### Git & Version Control Debugging
+
+```bash
+# Check git status
+git status
+git log --oneline
+
+# Check for uncommitted changes
+git diff
+git diff --staged
+
+# Check remote
+git remote -v
+
+# Verify credentials
+git credential-osxkeychain get  # macOS
+```
+
+### System Information
+
+```bash
+# OS Information
+uname -a                  # All system info
+hostnamectl               # Linux hostname
+sw_vers                   # macOS version
+
+# CPU Info
+nproc                     # Number of cores
+cat /proc/cpuinfo         # CPU details (Linux)
+
+# Environment variables
+env
+echo $HOME
+echo $PATH
+```
+
+### Complete System Diagnostic
+
+```bash
+# Run this to get complete system state
+echo "=== SYSTEM INFO ===" && \
+uname -a && \
+echo -e "\n=== NODE/NPM ===" && \
+node --version && npm --version && \
+echo -e "\n=== PYTHON ===" && \
+python3 --version && pip3 --version && \
+echo -e "\n=== DOCKER ===" && \
+docker --version && docker-compose --version && \
+echo -e "\n=== PORTS ===" && \
+lsof -i :3000 2>/dev/null || echo "3000: free" && \
+lsof -i :8000 2>/dev/null || echo "8000: free" && \
+echo -e "\n=== DISK ===" && \
+df -h / && \
+echo -e "\n=== PROJECT FILES ===" && \
+ls -la package.json 2>/dev/null && \
+ls -la backend/requirements.txt 2>/dev/null && \
+echo -e "\n=== DOCKER SERVICES ===" && \
+docker-compose ps 2>/dev/null || echo "Docker not running"
+```
+
+---
+
+## Troubleshooting Guide
+
+### Issue 1: SIGBUS Error During Docker Build
+
+**Error Message:**
+```
+npm error signal SIGBUS
+npm error command sh -c next build
+```
+
+**Solutions (in order):**
+
+1. **Increase Docker Memory (First Try)**
+   - Docker Desktop: Preferences → Resources → Memory: 6-8GB
+   - Restart Docker and retry
+
+2. **Build Frontend Locally (Recommended)**
+   ```bash
+   npm install
+   npm run build  # Build locally first
+   docker-compose up -d  # Now start Docker services
+   ```
+
+3. **Parallel Build Disable**
+   ```bash
+   # Edit next.config.ts
+   const nextConfig = {
+     staticPageGenerationTimeout: 120,
+     experimental: {
+       isrMemoryCacheSize: 0,  // Disable ISR cache
+     }
+   };
+   ```
+
+4. **Docker Compose Memory Limit**
+   ```yaml
+   # In docker-compose.yml, add to frontend service:
+   mem_limit: 2g
+   memswap_limit: 2g
+   ```
+
+5. **Clean & Retry**
+   ```bash
+   docker system prune -a
+   rm -rf .next node_modules
+   npm install
+   npm run build
+   ```
+
+### Issue 2: MySQL Service Not Running
+
+**Error:**
+```
+service "mysql" is not running
+```
+
+**Solutions:**
+
+1. **Check if docker-compose services are up**
+   ```bash
+   docker-compose ps
+   
+   # Expected: mysql status "Up"
+   ```
+
+2. **View MySQL logs**
+   ```bash
+   docker-compose logs mysql
+   
+   # Look for initialization errors
+   ```
+
+3. **Restart MySQL**
+   ```bash
+   docker-compose restart mysql
+   sleep 10
+   docker-compose ps mysql
+   ```
+
+4. **Full reset**
+   ```bash
+   docker-compose down -v
+   docker-compose up -d mysql
+   sleep 15
+   docker-compose ps
+   ```
+
+### Issue 3: Backend Cannot Connect to Databases
+
+**Error:**
+```
+Could not connect to server: Connection refused
+```
+
+**Solutions:**
+
+1. **Wait for database startup**
+   ```bash
+   docker-compose up -d
+   sleep 20  # Give databases time to initialize
+   docker-compose ps
+   ```
+
+2. **Check database credentials**
+   - PostgreSQL: user/password (not postgres/postgres)
+   - MySQL: user/password (root password is rootpassword for root)
+   - Verify in docker-compose.yml
+
+3. **Test connection directly**
+   ```bash
+   docker-compose exec db psql -U user -d dataconnector -c "SELECT 1;"
+   docker-compose exec mysql mysql -u user -p'password' -e "SELECT 1;"
+   ```
+
+4. **Check backend environment**
+   ```bash
+   # Verify backend/.env or settings.py has correct DATABASE_URL
+   echo $DATABASE_URL
+   
+   # Should match docker-compose database config
+   ```
+
+### Issue 4: Frontend Cannot Connect to Backend
+
+**Error:**
+```
+Failed to fetch from http://localhost:8000/api
+```
+
+**Solutions:**
+
+1. **Verify backend is running**
+   ```bash
+   curl http://localhost:8000/
+   
+   # Expected: Django response (not connection refused)
+   ```
+
+2. **Check CORS configuration**
+   - Backend should have `CORS_ALLOWED_ORIGINS` including `http://localhost:3000`
+   - Check `backend/settings.py`
+
+3. **Verify ports**
+   ```bash
+   netstat -tuln | grep -E "3000|8000"  # Linux
+   lsof -i :3000 && lsof -i :8000      # macOS
+   ```
+
+4. **Check firewall**
+   ```bash
+   sudo ufw allow 3000
+   sudo ufw allow 8000
+   ```
+
+### Issue 5: Python Virtual Environment Not Activating
+
+**Error:**
+```
+command not found: python
+(.venv) not showing in prompt
+```
+
+**Solutions:**
+
+1. **Create virtual environment again**
+   ```bash
+   cd backend
+   rm -rf .venv
+   python3 -m venv .venv
+   ```
+
+2. **Use correct activation**
+   - Linux/macOS: `source .venv/bin/activate`
+   - Windows PowerShell: `.venv\Scripts\Activate.ps1`
+   - Windows CMD: `.venv\Scripts\activate.bat`
+
+3. **Verify Python path**
+   ```bash
+   which python3
+   which python
+   
+   # Expected: /usr/bin/python3 (or similar)
+   ```
+
+### Issue 6: npm Dependencies Conflict
+
+**Error:**
+```
+npm ERR! peer dep missing: ...
+ERR! found 0 compatible
+```
+
+**Solutions:**
+
+1. **Clean install**
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+2. **Force resolution**
+   ```bash
+   npm install --legacy-peer-deps
+   ```
+
+3. **Check Node version**
+   ```bash
+   node --version  # Should be v16+
+   npm --version   # Should be v7+
+   ```
+
+### Issue 7: Port Already in Use
+
+**Error:**
+```
+EADDRINUSE :::3000
+EADDRINUSE :::8000
+```
+
+**Solutions:**
+
+1. **Find and stop process using port**
+   ```bash
+   # Linux/macOS
+   lsof -ti:3000 | xargs kill -9
+   lsof -ti:8000 | xargs kill -9
+   
+   # Windows
+   netstat -ano | findstr :3000
+   taskkill /PID [PID] /F
+   ```
+
+2. **Use different ports**
+   ```bash
+   # Frontend on different port
+   npm run dev -- -p 3001
+   
+   # Backend on different port
+   python manage.py runserver 8001
+   ```
+
+3. **Check running services**
+   ```bash
+   netstat -tuln | grep LISTEN
+   docker-compose ps
+   ```
+
+### Issue 8: Disk Space Issues
+
+**Error:**
+```
+No space left on device
+Docker: failed to register layer
+```
+
+**Solutions:**
+
+```bash
+# Check disk usage
+df -h
+
+# Clean Docker
+docker system prune -a
+
+# Remove stopped containers
+docker container prune
+
+# Remove unused volumes
+docker volume prune
+
+# Remove node_modules and rebuild
+rm -rf node_modules .next
+npm install
+npm run build
+```
+
+### Issue 9: Backend Migrations Failed
+
+**Error:**
+```
+django.db.utils.OperationalError: database "dataconnector" does not exist
+```
+
+**Solutions:**
+
+1. **Ensure database exists**
+   ```bash
+   docker-compose exec db psql -U user -c "CREATE DATABASE dataconnector;"
+   ```
+
+2. **Reset migrations**
+   ```bash
+   cd backend
+   python manage.py migrate --noinput
+   ```
+
+3. **Check database connection**
+   ```bash
+   python manage.py dbshell
+   ```
+
+---
+
+## Quick Reference
+
+### Start Development (Path A - Fastest)
+
+```bash
+# Terminal 1 - Frontend
+npm run dev
+
+# Terminal 2 - Backend  
+cd backend && source .venv/bin/activate && python manage.py runserver
+
+# Terminal 3 - Databases (optional)
+docker-compose up -d db mysql mongo clickhouse
+```
+
+### Start with Docker (Path B)
+
+```bash
+# Pre-build frontend locally (avoids SIGBUS)
+npm run build
+
+# Start all services
+docker-compose up -d
+
+# Verify
+docker-compose ps
+curl http://localhost:3000
+curl http://localhost:8000/api/
+```
+
+### Stop Everything
+
+```bash
+# Stop frontend and backend
+# Ctrl+C in each terminal
+
+# Stop Docker services
+docker-compose down
+
+# Complete reset
+docker-compose down -v
+```
+
+---
+
+**Need Help?** Check the [Troubleshooting Guide](#troubleshooting-guide) section or see [README.md](README.md) for additional documentation.
 
 # (Optional) Install Docker
 brew install docker
@@ -448,7 +1718,7 @@ cd backend
 ```bash
 # Make sure you're in backend/ directory with virtual env activated
 cd backend
-source venv/bin/activate  # or conda activate data-connector
+source .venv/bin/activate  # or conda activate data-connector
 
 # Install all Python packages
 pip install -r requirements.txt
@@ -667,16 +1937,28 @@ python setup_demo_users.py
 
 **Expected:** 4 users created successfully
 
-### Step 8: Populate Demo Data (Optional)
+### Step 8: Fresh Start Approach (No Pre-populated Data)
 
+The system uses a **fresh start workflow**:
+- ✅ Demo users created (admin, john_sales, sarah_analytics, mike_reporting)
+- ✅ No pre-populated connections
+- ✅ No pre-populated files
+- ✅ Data is generated **only when extracted**
+
+**To start the application:**
 ```bash
-# Still in backend/ with virtual env activated
-python populate_demo_data.py
-
-# Creates sample connections and test data
+# You're now ready to log in!
+# Open http://localhost:3000
+# Use: admin / admin123 (or any demo user)
 ```
 
-**Expected:** Demo connections and data created (optional, can be skipped)
+**Workflow for data generation:**
+1. Log in with a demo user
+2. Create a database connection (PostgreSQL, MySQL, MongoDB, ClickHouse)
+3. Select a table and click "Extract Data"
+4. Stored file auto-generates → Appears in "Stored Files" section
+5. Extracted data auto-saves → Appears in "Extracted Data" section
+6. Files > 24h old are automatically cleaned up
 
 ---
 
@@ -764,23 +2046,42 @@ Quit the server with CONTROL-C.
 
 ---
 
-## 👤 Demo Credentials
+## 👤 Demo Credentials (Fresh Start Approach)
 
-Four demo users are pre-configured with different roles:
+Four demo users are pre-configured - **No pre-populated connections or files**:
 
-| Username | Password | Role | Permissions |
-|----------|----------|------|-------------|
-| `admin` | `admin123` | Administrator | Full access to all features, user management |
-| `john_sales` | `john123` | Sales | Create connections, extract data |
-| `sarah_analytics` | `sarah456` | Analytics | View analytics, read-only access |
-| `mike_reporting` | `mike789` | Reporting | Generate reports, view dashboards |
+| Username | Password | Role | Access |
+|----------|----------|------|--------|
+| `admin` | `admin123` | Administrator | Full system access, all databases |
+| `john_sales` | `john123` | Sales | Can create connections and extract data |
+| `sarah_analytics` | `sarah456` | Analytics | Can view and analyze extracted data |
+| `mike_reporting` | `mike789` | Reporting | Can create reports from extracted data |
+
+### Fresh Start Workflow
+
+1. **Log in** with any demo user
+2. **Create Connection** → Select PostgreSQL, MySQL, MongoDB, or ClickHouse
+3. **Test Connection** → Verify credentials work
+4. **Extract Data** → Choose table and extract
+5. **Auto-Generate** → File created and saved
+6. **Auto-Refresh** → Stored Files section updates (1-second delay)
 
 ### First Time Login
 
 1. Navigate to http://localhost:3000
 2. Enter username and password from table above
 3. Click **"Sign In"**
-4. You'll be redirected to the dashboard
+4. You'll see an empty dashboard (fresh start)
+5. Create your first connection!
+
+### System Features
+
+✅ **Auto-Refresh:** Files section updates after extraction  
+✅ **Auto-Cleanup:** Files > 24h old automatically deleted  
+✅ **RBAC:** Per-user access control  
+✅ **Multi-DB:** Connect to 4 different database types  
+✅ **Data Editing:** Edit extracted data in grid  
+✅ **File Management:** Download and manage extracted files  
 
 ### Resetting User Passwords
 

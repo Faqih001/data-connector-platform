@@ -18,9 +18,159 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.db.models import Q
+import re
+
+
+def split_sql_statements(sql_text):
+    """Split a SQL batch into individual statements while respecting quoted strings."""
+    cleaned_lines = []
+    for line in sql_text.splitlines():
+        stripped_line = line.strip()
+        if not stripped_line or stripped_line.startswith('--'):
+            continue
+        cleaned_lines.append(line)
+
+    normalized_sql = '\n'.join(cleaned_lines)
+    statements = []
+    current = []
+    in_single_quote = False
+    in_double_quote = False
+    previous_char = ''
+
+    for char in normalized_sql:
+        if char == "'" and not in_double_quote and previous_char != '\\':
+            in_single_quote = not in_single_quote
+        elif char == '"' and not in_single_quote and previous_char != '\\':
+            in_double_quote = not in_double_quote
+
+        if char == ';' and not in_single_quote and not in_double_quote:
+            statement = ''.join(current).strip()
+            if statement:
+                statements.append(statement)
+            current = []
+        else:
+            current.append(char)
+
+        previous_char = char
+
+    final_statement = ''.join(current).strip()
+    if final_statement:
+        statements.append(final_statement)
+
+    return statements
+
+
+def fetch_live_table_preview(connection, table_name, limit=100):
+    """
+    Fetch live table columns and preview rows directly from the source DB.
+    This is used as a fallback when no StoredFile/ExtractedData exists yet.
+    """
+    connector = get_connector(connection)
+    connector.connect()
+    try:
+        columns = connector.get_columns(table_name)
+        raw_batch = connector.fetch_batch(table_name, limit, 0)
+
+        # clickhouse_driver with with_column_types=True returns:
+        # (rows, [(col_name, col_type), ...])
+        if (
+            isinstance(raw_batch, tuple)
+            and len(raw_batch) == 2
+            and isinstance(raw_batch[1], list)
+            and raw_batch[1]
+            and isinstance(raw_batch[1][0], tuple)
+        ):
+            row_values, column_types = raw_batch
+            col_names = [col[0] for col in column_types]
+            rows = [
+                {col: value for col, value in zip(col_names, row)}
+                for row in row_values
+            ]
+            if not columns:
+                columns = col_names
+            return columns, rows
+
+        return columns, raw_batch if isinstance(raw_batch, list) else []
+    finally:
+        connector.close()
+
+
+AUTO_SEED_SQL_BY_DB = {
+    'postgresql': {
+        'users': """INSERT INTO users (username, email) VALUES
+  ('john_doe', 'john@example.com'),
+  ('jane_smith', 'jane@example.com'),
+  ('alex_wilson', 'alex@example.com');""",
+        'transactions': """INSERT INTO transactions (user_id, amount, transaction_type, status, description, transaction_date) VALUES
+  (1, 500.00, 'credit', 'completed', 'Account deposit', CURRENT_TIMESTAMP),
+  (2, 150.00, 'debit', 'completed', 'Purchase order #123', CURRENT_TIMESTAMP),
+  (1, 1000.00, 'transfer', 'pending', 'Wire transfer', CURRENT_TIMESTAMP);""",
+    },
+    'mysql': {
+        'users': """INSERT INTO users (username, email) VALUES
+  ('john_doe', 'john@example.com'),
+  ('jane_smith', 'jane@example.com'),
+  ('alex_wilson', 'alex@example.com');""",
+        'transactions': """INSERT INTO transactions (user_id, amount, transaction_type, status, description, transaction_date) VALUES
+  (1, 500.00, 'credit', 'completed', 'Account deposit', CURRENT_TIMESTAMP),
+  (2, 150.00, 'debit', 'completed', 'Purchase order #123', CURRENT_TIMESTAMP),
+  (1, 1000.00, 'transfer', 'pending', 'Wire transfer', CURRENT_TIMESTAMP);""",
+    },
+    'clickhouse': {
+        'transactions': """INSERT INTO transactions (id, user_id, amount, transaction_type, status, description, transaction_date) VALUES
+  (1, 1, 500.00, 'credit', 'completed', 'Account deposit', now()),
+  (2, 2, 150.00, 'debit', 'completed', 'Purchase order #123', now()),
+  (3, 1, 1000.00, 'transfer', 'pending', 'Wire transfer', now());""",
+    },
+}
+
+
+def extract_created_table_name(create_statement: str):
+    """Extract table name from CREATE TABLE statement."""
+    pattern = r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\"]?)([A-Za-z_][A-Za-z0-9_]*)\1"
+    match = re.search(pattern, create_statement, re.IGNORECASE)
+    return match.group(2).lower() if match else None
+
+
+def apply_seed_for_known_table(connection, table_name):
+    """Apply predefined seed SQL for known sample tables."""
+    seed_sql = AUTO_SEED_SQL_BY_DB.get(connection.db_type, {}).get((table_name or '').lower())
+    if not seed_sql:
+        return False
+
+    statements = split_sql_statements(seed_sql)
+    if not statements:
+        return False
+
+    from .connectors import PostgresConnector, MySQLConnector, ClickHouseConnector
+    connector_map = {
+        'postgresql': PostgresConnector,
+        'mysql': MySQLConnector,
+        'clickhouse': ClickHouseConnector,
+    }
+
+    connector_class = connector_map.get(connection.db_type)
+    if not connector_class:
+        return False
+
+    connector = connector_class(connection)
+    connector.connect()
+    try:
+        if connection.db_type == 'clickhouse':
+            for statement in statements:
+                connector.connection.execute(statement)
+        else:
+            cursor = connector.connection.cursor()
+            for statement in statements:
+                cursor.execute(statement)
+            connector.connection.commit()
+        return True
+    finally:
+        connector.close()
 
 class DatabaseConnectionViewSet(viewsets.ModelViewSet):
     serializer_class = DatabaseConnectionSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """Filter connections by current user"""
@@ -51,57 +201,71 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
             return Response({"error": "format must be 'json' or 'csv'"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # In a real app, this would be a background task
-            for batch in extract_data_in_batches(connection, table_name, batch_size=batch_size):
-                # Store the first batch as a file
-                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                file_ext = 'csv' if format_type == 'csv' else 'json'
-                
-                # Generate base filename: extraction_{db_type}_{table_name}_{username}
-                username = request.user.username if request.user.is_authenticated else 'anonymous'
-                base_filename = f"extraction_{connection.db_type}_{table_name}_{username}"
-                
-                # Full filename with timestamp: extraction_{db_type}_{table_name}_{username}_{timestamp}.json
-                filename = f"{base_filename}_{timestamp}.{file_ext}"
-                filepath = os.path.join(settings.MEDIA_ROOT, filename)
-                
-                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            from .connectors import get_connector
 
-                # Save file in requested format
-                with open(filepath, 'w') as f:
-                    if format_type == 'csv':
-                        csv_data = json_to_csv(batch)
-                        f.write(csv_data)
-                    else:
-                        json.dump(batch, f, default=str)
-
-                # Create ExtractedData record (always store JSON in DB)
-                extracted_data = ExtractedData.objects.create(
-                    connection=connection,
-                    data=batch
-                )
-
-                # Create StoredFile record linked to ExtractedData
-                user = request.user if request.user.is_authenticated else None
-                StoredFile.objects.create(
-                    user=user,
-                    extracted_data=extracted_data,
-                    filepath=filepath,
-                    format_type=format_type,
-                    base_filename=base_filename,
-                    table_name=table_name,
-                    connection_name=connection.name
-                )
-                return Response({
-                    "data": batch,
-                    "extracted_data_id": extracted_data.id,
-                    "format": format_type,
-                    "batch_size": batch_size,
-                    "base_filename": base_filename,
-                    "timestamp": timestamp
-                }, status=status.HTTP_200_OK)
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            file_ext = 'csv' if format_type == 'csv' else 'json'
+            username = request.user.username if request.user.is_authenticated else 'anonymous'
+            base_filename = f"extraction_{connection.db_type}_{table_name}_{username}"
+            filename = f"{base_filename}_{timestamp}.{file_ext}"
+            filepath = os.path.join(settings.MEDIA_ROOT, filename)
             
-            return Response({"message": "Extraction complete, but no data found."}, status=status.HTTP_200_OK)
+            # Collect all batches first
+            all_batches = []
+            for batch in extract_data_in_batches(connection, table_name, batch_size=batch_size):
+                all_batches.extend(batch)
+
+            # If table is empty but is a known sample template, auto-seed once and re-fetch.
+            if not all_batches:
+                seeded = apply_seed_for_known_table(connection, table_name)
+                if seeded:
+                    for batch in extract_data_in_batches(connection, table_name, batch_size=batch_size):
+                        all_batches.extend(batch)
+            
+            # Create directory if needed
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+            # Save file in requested format (even if empty)
+            with open(filepath, 'w') as f:
+                if format_type == 'csv':
+                    csv_data = json_to_csv(all_batches)
+                    f.write(csv_data)
+                else:
+                    json.dump(all_batches, f, default=str)
+
+            connector = get_connector(connection)
+            connector.connect()
+            columns = connector.get_columns(table_name)
+            connector.close()
+
+            # Create ExtractedData record (always store JSON in DB, even if empty)
+            extracted_data = ExtractedData.objects.create(
+                connection=connection,
+                data=all_batches
+            )
+
+            # Create StoredFile record linked to ExtractedData
+            user = request.user if request.user.is_authenticated else None
+            StoredFile.objects.create(
+                user=user,
+                extracted_data=extracted_data,
+                filepath=filepath,
+                format_type=format_type,
+                base_filename=base_filename,
+                table_name=table_name,
+                connection_name=connection.name
+            )
+            
+            return Response({
+                "data": all_batches,
+                "columns": columns,
+                "extracted_data_id": extracted_data.id,
+                "format": format_type,
+                "batch_size": batch_size,
+                "base_filename": base_filename,
+                "timestamp": timestamp,
+                "row_count": len(all_batches)
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -140,6 +304,13 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
                 {"error": "sql_statement is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        statements = split_sql_statements(sql_statement)
+        if not statements:
+            return Response(
+                {"error": "sql_statement did not contain any executable SQL"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         # Validate that it's a CREATE TABLE statement (basic security)
         sql_upper = sql_statement.upper().strip()
@@ -149,6 +320,17 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Backward-compatible safety net:
+        # if frontend sends CREATE-only template, auto-append sample seed insert when known.
+        has_insert_statement = any(
+            stmt.strip().upper().startswith('INSERT INTO') for stmt in statements
+        )
+        if not has_insert_statement:
+            created_table_name = extract_created_table_name(statements[0]) if statements else None
+            auto_seed = AUTO_SEED_SQL_BY_DB.get(connection.db_type, {}).get(created_table_name or '')
+            if auto_seed:
+                statements.extend(split_sql_statements(auto_seed))
+
         try:
             from .connectors import PostgresConnector, MySQLConnector, MongoConnector, ClickHouseConnector
             
@@ -178,16 +360,22 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
                 )
             elif connection.db_type == 'clickhouse':
                 # ClickHouse uses execute() directly on the client
-                connector.connection.execute(sql_statement)
+                for statement in statements:
+                    connector.connection.execute(statement)
             else:  # PostgreSQL, MySQL
                 cursor = connector.connection.cursor()
-                cursor.execute(sql_statement)
+                for statement in statements:
+                    cursor.execute(statement)
                 connector.connection.commit()
             
             connector.close()
             
             return Response(
-                {"message": f"Table created successfully", "sql": sql_statement},
+                {
+                    "message": f"Table created successfully",
+                    "sql": sql_statement,
+                    "statements_executed": len(statements),
+                },
                 status=status.HTTP_200_OK
             )
             
@@ -408,28 +596,53 @@ class StoredFileViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def download(self, request, pk=None):
-        """Download file data as JSON."""
-        file = self.get_object()
-        
+        """Download file data as JSON or reconstruct from database."""
         try:
-            if not os.path.exists(file.filepath):
-                return Response(
-                    {"error": "File not found on disk"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-            with open(file.filepath, 'r') as f:
-                data = json.load(f)
-            
-            return Response(data, status=status.HTTP_200_OK)
-        except json.JSONDecodeError:
-            return Response(
-                {"error": "Invalid JSON file"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            file = self.get_object()
         except Exception as e:
             return Response(
-                {"error": str(e)},
+                {"error": f"File not found or access denied: {str(e)}"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        try:
+            # First, try to read from disk
+            if file.filepath and os.path.exists(file.filepath):
+                try:
+                    with open(file.filepath, 'r') as f:
+                        data = json.load(f)
+                    return Response(data, status=status.HTTP_200_OK)
+                except json.JSONDecodeError:
+                    return Response(
+                        {"error": "File on disk is corrupted or not valid JSON"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                except Exception as e:
+                    # Fall through to database read
+                    pass
+            
+            # Fallback: read from ExtractedData database model
+            if file.extracted_data:
+                data = file.extracted_data.data
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except json.JSONDecodeError:
+                        return Response(
+                            {"error": "Data in database is not valid JSON"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                return Response(data, status=status.HTTP_200_OK)
+            
+            # No data available
+            return Response(
+                {"error": "File data not found - neither on disk nor in database"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        except Exception as e:
+            return Response(
+                {"error": f"Error retrieving file: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -801,31 +1014,44 @@ class ExtractedDataViewSet(viewsets.ModelViewSet):
 
         try:
             # First, try to find a StoredFile that matches the criteria
-            # We look for a filename that contains the table name and belongs to the right connection
-            query = Q(extracted_data__connection_id=connection_id) & Q(filepath__contains=f"_{table_name}_")
+            # Use the table_name field directly for more reliable matching
+            query = Q(extracted_data__connection_id=connection_id) & Q(table_name=table_name)
 
             # Filter by user if not admin
             if not (user.is_staff or user.is_superuser):
                 query &= Q(user=user)
 
-            stored_file = StoredFile.objects.filter(query).first()
+            stored_file = StoredFile.objects.filter(query).order_by('-extracted_at').first()
 
             if stored_file and stored_file.extracted_data:
                 # Return existing extracted data
                 extracted_data = stored_file.extracted_data
                 serializer = self.get_serializer(extracted_data)
-                return Response(serializer.data)
+                response_data = dict(serializer.data)
 
-            # If no file found, return a response for newly created tables with no data yet
+                try:
+                    live_columns, live_rows = fetch_live_table_preview(extracted_data.connection, table_name)
+                    response_data["columns"] = live_columns
+                    if not response_data.get("data"):
+                        response_data["data"] = live_rows
+                except Exception:
+                    response_data["columns"] = []
+
+                return Response(response_data)
+
+            # No stored extraction yet. Read live table structure/data directly.
+            connection = DatabaseConnection.objects.get(id=connection_id)
+            live_columns, live_rows = fetch_live_table_preview(connection, table_name)
             return Response(
                 {
                     "id": None,
                     "connection": connection_id,
                     "table_name": table_name,
-                    "data": [],
+                    "data": live_rows,
+                    "columns": live_columns,
                     "created_at": None,
                     "updated_at": None,
-                    "message": "Table found but no extracted data available yet. Use Extract Data to populate this table."
+                    "message": "Live preview loaded from source table."
                 },
                 status=status.HTTP_200_OK
             )

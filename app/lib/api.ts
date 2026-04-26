@@ -1,6 +1,12 @@
 import { DatabaseConnection } from '@/app/types';
 
-export const API_URL = 'http://localhost:8001/api';
+// Environment-aware API URL
+const getApiUrl = () => {
+  if (typeof window === 'undefined') return 'http://backend:8000/api';
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
+};
+
+export const API_URL = getApiUrl();
 
 const fetchOptions = {
   credentials: 'include' as const,

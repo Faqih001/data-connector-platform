@@ -184,14 +184,23 @@ This is the **PRIMARY USER INTERFACE** - Most users will spend their time here.
 
 **URL:** http://localhost:3000
 
+**Fresh Start State:** Dashboard starts EMPTY with no pre-populated connections or files. You create everything!
+
 ### What You Can Do Here:
 ✅ Create database connections  
 ✅ Extract data from databases  
-✅ View extracted files  
+✅ View extracted files (auto-generated on extraction)  
 ✅ Download data (JSON/CSV)  
 ✅ Share files with colleagues  
 ✅ Edit and save data  
 ✅ Manage permissions  
+
+### Fresh Start Workflow
+1. **Create Connection** → Select database type → Enter credentials
+2. **Extract Data** → Choose table → Click Extract
+3. **Auto-Generated** → File created and saved
+4. **Auto-Refresh** → Stored Files section updates (1 second)
+5. **Auto-Cleanup** → Files > 24h old deleted
 
 ### Layout & Components
 
@@ -203,27 +212,25 @@ This is the **PRIMARY USER INTERFACE** - Most users will spend their time here.
 │                                                          │
 │  QUICK ACTION BUTTONS:                                   │
 │  ┌──────────────┬──────────────┐                        │
-│  │ 📊 API       │ 📊 Admin     │                        │
-│  │    Files     │    Panel     │                        │
+│  │ 🔗 API       │ 🔧 Admin     │                        │
+│  │    Connections│    Panel     │                        │
 │  └──────────────┴──────────────┘                        │
 │  ┌────────────────────────────────┐                     │
-│  │  🎨 Open Frontend (Port 3000)  │                     │
+│  │  🎨 Frontend Overview (Port 3000)                    │
 │  └────────────────────────────────┘                     │
 │                                                          │
 ├──┬─────────────────┬──┬──────────────────────────────────┤
 │  │ LEFT SIDEBAR    │  │   RIGHT MAIN AREA               │
 │  │                 │  │     Connections   │  │     - Format (JSON/CSV)         │
 │  │   Dropdown      │  │     - Extract Button            │
-│  │                                         │
+│  │                 │  │     - [EMPTY: Create First]     │
 │  │ ► Connection    │  │   ► Extract Data Form           │
 │  │   Form          │  │     - Table Name Input          │
-│  │                 │  │     - Batch Size Selection      │     │  │                                  │
+│  │                 │  │     - Batch Size Selection      │
 │  │ ► Stored Files  │  │   ► Data Grid                   │
 │  │   Viewer        │  │     - Preview extracted data    │
 │  │   - File list   │  │     - Editable cells            │
-│  │   - Format      │  │     - Save changes              │
-│  │   - Download    │  │                                  │
-│  │   - Share       │  │                                  │
+│  │   - [EMPTY]     │  │     - Save changes              │
 │  │                 │  │                                  │
 │  └─────────────────┴──┴──────────────────────────────────┘
 ```

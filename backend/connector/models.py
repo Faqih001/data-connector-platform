@@ -17,7 +17,7 @@ class DatabaseConnection(models.Model):
     host = models.CharField(max_length=255)
     port = models.IntegerField()
     username = models.CharField(max_length=255)
-    password = models.CharField(max_length=255)  # In a real app, use encrypted fields
+    password = models.CharField(max_length=255, blank=True, default='')  # Allow blank for ClickHouse and otherk for ClickHouse and others
     database_name = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -8,6 +8,19 @@ from datetime import datetime
 from uuid import UUID
 from decimal import Decimal
 import json
+import os
+
+# System tables to exclude from user-facing table lists
+SYSTEM_TABLE_PREFIXES = (
+    'auth_',
+    'django_',
+    'connector_',
+    'sqlite_',
+)
+
+def is_system_table(table_name):
+    """Check if a table is a system/internal table that should be hidden."""
+    return any(table_name.lower().startswith(prefix) for prefix in SYSTEM_TABLE_PREFIXES)
 
 def serialize_value(obj):
     """Convert non-JSON-serializable objects to serializable formats."""
@@ -24,6 +37,32 @@ def serialize_value(obj):
     else:
         return obj
 
+def translate_docker_host(host, db_type, port):
+    """
+    Translate localhost to Docker service names when running in containers.
+    Maps localhost ports to Docker service names.
+    """
+    # If not localhost, return as-is
+    if host not in ('localhost', '127.0.0.1', '::1'):
+        return host
+    
+    # Check if running in Docker by looking for Docker environment indicator
+    is_docker = os.path.exists('/.dockerenv') or os.getenv('DOCKER_ENV')
+    
+    if not is_docker:
+        return host
+    
+    # Map database types to Docker service names
+    docker_hosts = {
+        'postgresql': 'db',
+        'mysql': 'mysql',
+        'mongodb': 'mongo',
+        'clickhouse': 'clickhouse',
+    }
+    
+    # Return Docker service name or original host
+    return docker_hosts.get(db_type, host)
+
 class BaseConnector(ABC):
     def __init__(self, connection_details):
         self.connection_details = connection_details
@@ -37,6 +76,9 @@ class BaseConnector(ABC):
     def fetch_batch(self, table_name, batch_size, offset):
         pass
 
+    def get_columns(self, table_name):
+        return []
+
     def close(self):
         if self.connection:
             self.connection.close()
@@ -45,8 +87,10 @@ class PostgresConnector(BaseConnector):
     def connect(self):
         # Use decrypted_password property if available (from Django model)
         password = getattr(self.connection_details, 'decrypted_password', self.connection_details.password)
+        # Translate localhost to Docker service name if needed
+        host = translate_docker_host(self.connection_details.host, 'postgresql', self.connection_details.port)
         self.connection = psycopg2.connect(
-            host=self.connection_details.host,
+            host=host,
             port=self.connection_details.port,
             user=self.connection_details.username,
             password=password,
@@ -66,14 +110,30 @@ class PostgresConnector(BaseConnector):
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
         )
         tables = [row[0] for row in cursor.fetchall()]
-        return tables
+        # Filter out system tables
+        return [t for t in tables if not is_system_table(t)]
+
+    def get_columns(self, table_name):
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = %s
+            ORDER BY ordinal_position
+            """,
+            [table_name],
+        )
+        return [row[0] for row in cursor.fetchall()]
 
 class MySQLConnector(BaseConnector):
     def connect(self):
         # Use decrypted_password property if available (from Django model)
         password = getattr(self.connection_details, 'decrypted_password', self.connection_details.password)
+        # Translate localhost to Docker service name if needed
+        host = translate_docker_host(self.connection_details.host, 'mysql', self.connection_details.port)
         self.connection = mysql.connector.connect(
-            host=self.connection_details.host,
+            host=host,
             port=self.connection_details.port,
             user=self.connection_details.username,
             password=password,
@@ -90,14 +150,30 @@ class MySQLConnector(BaseConnector):
         cursor = self.connection.cursor()
         cursor.execute(f"SELECT table_name FROM information_schema.tables WHERE table_schema = database() ORDER BY table_name")
         tables = [row[0] for row in cursor.fetchall()]
-        return tables
+        # Filter out system tables
+        return [t for t in tables if not is_system_table(t)]
+
+    def get_columns(self, table_name):
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = database() AND table_name = %s
+            ORDER BY ordinal_position
+            """,
+            [table_name],
+        )
+        return [row[0] for row in cursor.fetchall()]
 
 class MongoConnector(BaseConnector):
     def connect(self):
         # Use decrypted_password property if available (from Django model)
         password = getattr(self.connection_details, 'decrypted_password', self.connection_details.password)
+        # Translate localhost to Docker service name if needed
+        host = translate_docker_host(self.connection_details.host, 'mongodb', self.connection_details.port)
         self.connection = pymongo.MongoClient(
-            host=self.connection_details.host,
+            host=host,
             port=self.connection_details.port,
             username=self.connection_details.username,
             password=password,
@@ -112,16 +188,26 @@ class MongoConnector(BaseConnector):
     def get_tables(self):
         db = self.connection[self.connection_details.database_name]
         collections = db.list_collection_names()
-        return collections
+        # Filter out system tables
+        return [c for c in collections if not is_system_table(c)]
+
+    def get_columns(self, collection_name):
+        db = self.connection[self.connection_details.database_name]
+        document = db[collection_name].find_one()
+        if not document:
+            return []
+        return list(document.keys())
 
 class ClickHouseConnector(BaseConnector):
     def connect(self):
         # Use decrypted_password property if available (from Django model)
         password = getattr(self.connection_details, 'decrypted_password', self.connection_details.password)
+        # Translate localhost to Docker service name if needed
+        host = translate_docker_host(self.connection_details.host, 'clickhouse', self.connection_details.port)
         
         # ClickHouse client connection kwargs
         connect_kwargs = {
-            'host': self.connection_details.host,
+            'host': host,
             'port': self.connection_details.port,
             'user': self.connection_details.username,
             'database': self.connection_details.database_name,
@@ -143,7 +229,14 @@ class ClickHouseConnector(BaseConnector):
     def get_tables(self):
         result = self.connection.execute(f"SELECT name FROM system.tables WHERE database = '{self.connection_details.database_name}' ORDER BY name")
         tables = [row[0] for row in result]
-        return tables
+        # Filter out system tables
+        return [t for t in tables if not is_system_table(t)]
+
+    def get_columns(self, table_name):
+        result = self.connection.execute(
+            f"SELECT name FROM system.columns WHERE database = '{self.connection_details.database_name}' AND table = '{table_name}' ORDER BY position"
+        )
+        return [row[0] for row in result]
 
 def get_connector(connection_details):
     if connection_details.db_type == 'postgresql':

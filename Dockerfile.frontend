@@ -1,23 +1,28 @@
 # Dockerfile for Next.js frontend
+# Using node:20-slim (Debian-based) instead of alpine to avoid SIGBUS errors
 
 # Install dependencies
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:20-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci --prefer-offline --no-audit
 
 # Build the app
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
+ENV NODE_OPTIONS=--max_old_space_size=3072
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
 # Run the app
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV NODE_OPTIONS=--max_old_space_size=2048
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_DOCKER_ENV=1
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
