@@ -132,6 +132,45 @@ def extract_created_table_name(create_statement: str):
     return match.group(2).lower() if match else None
 
 
+def extract_mongo_collection_name(statement: str):
+    """Extract collection name from Mongo template comments or createCollection syntax."""
+    collection_comment = re.search(r"Collection:\s*([A-Za-z_][A-Za-z0-9_]*)", statement, re.IGNORECASE)
+    if collection_comment:
+        return collection_comment.group(1)
+
+    create_collection = re.search(
+        r"createCollection\s*\(\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]\s*\)",
+        statement,
+        re.IGNORECASE,
+    )
+    if create_collection:
+        return create_collection.group(1)
+
+    return None
+
+
+def mongo_seed_documents(collection_name: str):
+    """Provide deterministic starter documents for Mongo collection templates."""
+    now = datetime.now()
+    seed_map = {
+        'users': [
+            {'username': 'john_doe', 'email': 'john@example.com', 'created_at': now},
+            {'username': 'jane_smith', 'email': 'jane@example.com', 'created_at': now},
+            {'username': 'alex_wilson', 'email': 'alex@example.com', 'created_at': now},
+        ],
+        'transactions': [
+            {'user_id': 1, 'amount': 500.00, 'type': 'credit', 'status': 'completed', 'description': 'Account deposit', 'date': now},
+            {'user_id': 2, 'amount': 150.00, 'type': 'debit', 'status': 'completed', 'description': 'Purchase order #123', 'date': now},
+            {'user_id': 1, 'amount': 1000.00, 'type': 'transfer', 'status': 'pending', 'description': 'Wire transfer', 'date': now},
+        ],
+    }
+    return seed_map.get((collection_name or '').lower(), [])
+
+
+def is_valid_identifier(name: str):
+    return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name or ""))
+
+
 def apply_seed_for_known_table(connection, table_name):
     """Apply predefined seed SQL for known sample tables."""
     seed_sql = AUTO_SEED_SQL_BY_DB.get(connection.db_type, {}).get((table_name or '').lower())
@@ -306,19 +345,21 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
             )
 
         statements = split_sql_statements(sql_statement)
-        if not statements:
+        is_mongodb = connection.db_type == 'mongodb'
+        if not is_mongodb and not statements:
             return Response(
                 {"error": "sql_statement did not contain any executable SQL"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # Validate that it's a CREATE TABLE statement (basic security)
-        sql_upper = sql_statement.upper().strip()
-        if not sql_upper.startswith('CREATE TABLE'):
-            return Response(
-                {"error": "Only CREATE TABLE statements are allowed"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+
+        if not is_mongodb:
+            # Validate that it's a CREATE TABLE statement (basic security)
+            sql_upper = sql_statement.upper().strip()
+            if not sql_upper.startswith('CREATE TABLE'):
+                return Response(
+                    {"error": "Only CREATE TABLE statements are allowed"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         # Backward-compatible safety net:
         # if frontend sends CREATE-only template, auto-append sample seed insert when known.
@@ -351,11 +392,26 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
             connector = ConnectorClass(connection)
             connector.connect()
             
-            # Execute the CREATE TABLE statement
             if connection.db_type == 'mongodb':
-                # MongoDB doesn't need explicit table creation
+                db = connector.connection[connection.database_name]
+                collection_name = extract_mongo_collection_name(sql_statement)
+                if not collection_name:
+                    return Response(
+                        {"error": "MongoDB template must include a collection name (e.g. '// MongoDB Collection: users')"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                existing = db.list_collection_names()
+                if collection_name not in existing:
+                    db.create_collection(collection_name)
+
+                seed_docs = mongo_seed_documents(collection_name)
+                if seed_docs and db[collection_name].count_documents({}) == 0:
+                    db[collection_name].insert_many(seed_docs)
+
+                connector.close()
                 return Response(
-                    {"message": f"MongoDB collection will be created on first insert"},
+                    {"message": f"Collection '{collection_name}' is ready", "seeded_rows": len(seed_docs)},
                     status=status.HTTP_200_OK
                 )
             elif connection.db_type == 'clickhouse':
@@ -401,6 +457,11 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
                 {"error": "table_name is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        if not is_valid_identifier(table_name):
+            return Response(
+                {"error": "Invalid table_name. Use letters, numbers, and underscores only."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         try:
             from .connectors import PostgresConnector, MySQLConnector, MongoConnector, ClickHouseConnector
@@ -425,7 +486,8 @@ class DatabaseConnectionViewSet(viewsets.ModelViewSet):
             # Execute the DROP TABLE statement
             if connection.db_type == 'mongodb':
                 # MongoDB - drop collection
-                connector.connection[table_name].drop()
+                db = connector.connection[connection.database_name]
+                db[table_name].drop()
             elif connection.db_type == 'clickhouse':
                 # ClickHouse - execute DROP TABLE
                 connector.connection.execute(f"DROP TABLE IF EXISTS {table_name}")

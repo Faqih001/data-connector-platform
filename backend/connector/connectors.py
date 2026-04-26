@@ -9,6 +9,7 @@ from uuid import UUID
 from decimal import Decimal
 import json
 import os
+import re
 
 # System tables to exclude from user-facing table lists
 SYSTEM_TABLE_PREFIXES = (
@@ -36,6 +37,16 @@ def serialize_value(obj):
         return None
     else:
         return obj
+
+
+IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def validate_identifier(identifier):
+    """Allow only simple SQL identifiers to prevent injection via table names."""
+    if not isinstance(identifier, str) or not IDENTIFIER_PATTERN.match(identifier):
+        raise ValueError(f"Invalid identifier: {identifier}")
+    return identifier
 
 def translate_docker_host(host, db_type, port):
     """
@@ -98,6 +109,7 @@ class PostgresConnector(BaseConnector):
         )
 
     def fetch_batch(self, table_name, batch_size, offset):
+        table_name = validate_identifier(table_name)
         cursor = self.connection.cursor()
         cursor.execute(f"SELECT * FROM {table_name} LIMIT {batch_size} OFFSET {offset}")
         columns = [desc[0] for desc in cursor.description]
@@ -114,6 +126,7 @@ class PostgresConnector(BaseConnector):
         return [t for t in tables if not is_system_table(t)]
 
     def get_columns(self, table_name):
+        table_name = validate_identifier(table_name)
         cursor = self.connection.cursor()
         cursor.execute(
             """
@@ -141,6 +154,7 @@ class MySQLConnector(BaseConnector):
         )
 
     def fetch_batch(self, table_name, batch_size, offset):
+        table_name = validate_identifier(table_name)
         cursor = self.connection.cursor(dictionary=True)
         cursor.execute(f"SELECT * FROM {table_name} LIMIT {batch_size} OFFSET {offset}")
         rows = cursor.fetchall()
@@ -154,6 +168,7 @@ class MySQLConnector(BaseConnector):
         return [t for t in tables if not is_system_table(t)]
 
     def get_columns(self, table_name):
+        table_name = validate_identifier(table_name)
         cursor = self.connection.cursor()
         cursor.execute(
             """
@@ -180,6 +195,7 @@ class MongoConnector(BaseConnector):
         )
 
     def fetch_batch(self, collection_name, batch_size, offset):
+        collection_name = validate_identifier(collection_name)
         db = self.connection[self.connection_details.database_name]
         collection = db[collection_name]
         rows = list(collection.find().skip(offset).limit(batch_size))
@@ -192,6 +208,7 @@ class MongoConnector(BaseConnector):
         return [c for c in collections if not is_system_table(c)]
 
     def get_columns(self, collection_name):
+        collection_name = validate_identifier(collection_name)
         db = self.connection[self.connection_details.database_name]
         document = db[collection_name].find_one()
         if not document:
@@ -224,7 +241,13 @@ class ClickHouseConnector(BaseConnector):
         pass
 
     def fetch_batch(self, table_name, batch_size, offset):
-        return self.connection.execute(f"SELECT * FROM {table_name} LIMIT {batch_size} OFFSET {offset}", with_column_types=True)
+        table_name = validate_identifier(table_name)
+        rows, column_types = self.connection.execute(
+            f"SELECT * FROM {table_name} LIMIT {batch_size} OFFSET {offset}",
+            with_column_types=True,
+        )
+        columns = [col[0] for col in column_types]
+        return [{col: serialize_value(val) for col, val in zip(columns, row)} for row in rows]
 
     def get_tables(self):
         result = self.connection.execute(f"SELECT name FROM system.tables WHERE database = '{self.connection_details.database_name}' ORDER BY name")
@@ -233,6 +256,7 @@ class ClickHouseConnector(BaseConnector):
         return [t for t in tables if not is_system_table(t)]
 
     def get_columns(self, table_name):
+        table_name = validate_identifier(table_name)
         result = self.connection.execute(
             f"SELECT name FROM system.columns WHERE database = '{self.connection_details.database_name}' AND table = '{table_name}' ORDER BY position"
         )

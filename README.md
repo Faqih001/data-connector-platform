@@ -4,6 +4,12 @@
 
 This is a full-stack web application that allows users to connect to multiple databases, extract data in batches, edit the data in a grid, and send it to a backend for processing and storage.
 
+## 🎬 Demo Video
+
+Watch the application running locally:
+
+- [Data Connector Platform Demo](https://drive.google.com/file/d/1GGUKpsIZ5VFe7qomV_GU5riWmSEMlIpG/view?usp=sharing)
+
 ## ✨ Project Completion Status
 - ✅ All core features implemented and tested
 - ✅ Multi-database support fully functional
